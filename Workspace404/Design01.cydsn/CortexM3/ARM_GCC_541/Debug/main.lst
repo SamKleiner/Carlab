@@ -1,0 +1,2403 @@
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 1
+
+
+   1              		.syntax unified
+   2              		.cpu cortex-m3
+   3              		.fpu softvfp
+   4              		.eabi_attribute 20, 1
+   5              		.eabi_attribute 21, 1
+   6              		.eabi_attribute 23, 3
+   7              		.eabi_attribute 24, 1
+   8              		.eabi_attribute 25, 1
+   9              		.eabi_attribute 26, 1
+  10              		.eabi_attribute 30, 1
+  11              		.eabi_attribute 34, 1
+  12              		.eabi_attribute 18, 4
+  13              		.thumb
+  14              		.syntax unified
+  15              		.file	"main.c"
+  16              		.text
+  17              	.Ltext0:
+  18              		.cfi_sections	.debug_frame
+  19              		.global	__aeabi_ui2d
+  20              		.global	__aeabi_dsub
+  21              		.global	__aeabi_dmul
+  22              		.global	__aeabi_dadd
+  23              		.global	__aeabi_d2uiz
+  24              		.section	.text.turn,"ax",%progbits
+  25              		.align	2
+  26              		.global	turn
+  27              		.thumb
+  28              		.thumb_func
+  29              		.type	turn, %function
+  30              	turn:
+  31              	.LFB65:
+  32              		.file 1 "main.c"
+   1:main.c        ****   /* ========================================
+   2:main.c        ****  *
+   3:main.c        ****  * Copyright YOUR COMPANY, THE YEAR
+   4:main.c        ****  * All Rights Reserved
+   5:main.c        ****  * UNPUBLISHED, LICENSED SOFTWARE.
+   6:main.c        ****  *
+   7:main.c        ****  * CONFIDENTIAL AND PROPRIETARY INFORMATION
+   8:main.c        ****  * WHICH IS THE PROPERTY OF your company.
+   9:main.c        ****  *
+  10:main.c        ****  * ========================================
+  11:main.c        **** */
+  12:main.c        **** #include "project.h"
+  13:main.c        **** #include <stdio.h>
+  14:main.c        **** #include <math.h>
+  15:main.c        **** #include <stdbool.h>
+  16:main.c        **** 
+  17:main.c        **** bool servo_set = false;
+  18:main.c        **** bool flame_found = false;
+  19:main.c        **** 
+  20:main.c        **** uint16 old_time = 65535;
+  21:main.c        **** uint16 new_time = 0;
+  22:main.c        **** uint16 dt = 0;
+  23:main.c        **** double oldspeed = 0;
+  24:main.c        **** double speed = 0;
+  25:main.c        **** double target = 4; 
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 2
+
+
+  26:main.c        **** double n0 = 50;
+  27:main.c        **** double n = 50;
+  28:main.c        **** double error = 0;
+  29:main.c        **** double integration = 0;
+  30:main.c        **** double derivative = 0;
+  31:main.c        **** double Kp = 80;
+  32:main.c        **** double Ki = 1;
+  33:main.c        **** double Kd = 0;
+  34:main.c        **** double diameter = .216535; 
+  35:main.c        **** 
+  36:main.c        **** double percent;
+  37:main.c        **** char strbuf2[16];
+  38:main.c        **** double PWM_Steer; 
+  39:main.c        **** double kp = -0.2;
+  40:main.c        **** double kd = -0.2;
+  41:main.c        **** uint16 new_timet;
+  42:main.c        **** 
+  43:main.c        **** /*
+  44:main.c        **** CY_ISR(interCounter) {
+  45:main.c        ****     uint16 captureVal;
+  46:main.c        ****     char strbuf[16];
+  47:main.c        ****     
+  48:main.c        ****     captureVal = Timer_ReadCapture();
+  49:main.c        ****     
+  50:main.c        ****     sprintf(strbuf, "Count: %u", captureVal);
+  51:main.c        ****     
+  52:main.c        ****     char strbuf2[32];
+  53:main.c        ****     sprintf(strbuf2,"%s\r\n",strbuf);
+  54:main.c        ****     UART_PutString(strbuf2);
+  55:main.c        ****     
+  56:main.c        ****     LCD_ClearDisplay();
+  57:main.c        ****     LCD_Position(0,0);
+  58:main.c        ****     LCD_PrintString(strbuf);
+  59:main.c        ****     
+  60:main.c        ****     PWM_Motor_WriteCompare((uint8_t) 20);
+  61:main.c        **** } */
+  62:main.c        ****     
+  63:main.c        **** /*
+  64:main.c        **** CY_ISR(control) {
+  65:main.c        ****     char strbuf[32];
+  66:main.c        ****   
+  67:main.c        ****     new_time = HE_Timer_ReadCapture();
+  68:main.c        ****     HE_Timer_ReadStatusRegister();
+  69:main.c        ****     
+  70:main.c        ****     if (old_time > new_time){
+  71:main.c        ****         dt = old_time - new_time;
+  72:main.c        ****     } else{
+  73:main.c        ****         dt = 65535 - new_time + old_time;
+  74:main.c        ****     }
+  75:main.c        ****     old_time = new_time;
+  76:main.c        ****     speed = 1300/(double)dt;
+  77:main.c        ****     error = target - speed;
+  78:main.c        ****     integration = integration + error;
+  79:main.c        ****     derivative = (speed - oldspeed)/(double)dt;
+  80:main.c        ****     if (speed != 0) {
+  81:main.c        ****         oldspeed = speed;
+  82:main.c        ****     }
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 3
+
+
+  83:main.c        ****     n = n0 + Kp*error + Ki*integration + Kd*derivative;
+  84:main.c        ****     if (n > 220) {
+  85:main.c        ****         n = 220;
+  86:main.c        ****     }
+  87:main.c        ****     if (n < 0) {
+  88:main.c        ****         n = 0;
+  89:main.c        ****     }
+  90:main.c        ****     PWM_Motor_WriteCompare((uint8_t) n);
+  91:main.c        ****     
+  92:main.c        ****     sprintf(strbuf, "Speed: %lf\r\n", speed);
+  93:main.c        ****     UART_PutString(strbuf);
+  94:main.c        ****     oldspeed = speed;
+  95:main.c        **** }
+  96:main.c        **** */
+  97:main.c        **** CY_ISR(tempCheck) {
+  98:main.c        ****     /*char receivedData[50]; // Buffer to store received data
+  99:main.c        ****     int index = 0;
+ 100:main.c        ****     int count = 0; // count of turns 0 = center, 1 = left, 2 = right
+ 101:main.c        ****     // 58 is center, 32 is right, 86 is left
+ 102:main.c        ****     if (count == 0) {
+ 103:main.c        ****         PWM_IRServo_WriteCompare((uint8) 58);
+ 104:main.c        ****         char receivedChar = UART_Mega_ReadRxData();
+ 105:main.c        ****         if (receivedChar == 1) {
+ 106:main.c        ****             flame_found = true; // if 1 flame found 
+ 107:main.c        ****         } */
+ 108:main.c        ****         /*else {
+ 109:main.c        ****             PWM_IRServo_WriteCompare((uint8) 86);
+ 110:main.c        ****             count = 1;
+ 111:main.c        ****         }*/
+ 112:main.c        ****      //}
+ 113:main.c        ****     /*else if (count == 1) {
+ 114:main.c        ****         PWM_IRServo_WriteCompare((uint8) 86);
+ 115:main.c        ****         char receivedChar = UART_Mega_ReadRxData();
+ 116:main.c        ****         count = 2;
+ 117:main.c        ****     }
+ 118:main.c        ****     else {
+ 119:main.c        ****         PWM_IRServo_WriteCompare((uint8) 86);
+ 120:main.c        ****         char receivedChar = UART_Mega_ReadRxData();
+ 121:main.c        ****     } */
+ 122:main.c        ****     //servo_set = false;
+ 123:main.c        **** }
+ 124:main.c        **** 
+ 125:main.c        **** CY_ISR(turn) {
+  33              		.loc 1 125 0
+  34              		.cfi_startproc
+  35              		@ args = 0, pretend = 0, frame = 0
+  36              		@ frame_needed = 0, uses_anonymous_args = 0
+  37 0000 2DE9F047 		push	{r4, r5, r6, r7, r8, r9, r10, lr}
+  38              		.cfi_def_cfa_offset 32
+  39              		.cfi_offset 4, -32
+  40              		.cfi_offset 5, -28
+  41              		.cfi_offset 6, -24
+  42              		.cfi_offset 7, -20
+  43              		.cfi_offset 8, -16
+  44              		.cfi_offset 9, -12
+  45              		.cfi_offset 10, -8
+  46              		.cfi_offset 14, -4
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 4
+
+
+ 126:main.c        ****     // new_timet is the time from the edge of the line of video to the left edge of the black line 
+ 127:main.c        ****     new_timet = 65535 - Timer_Edge_ReadCapture();
+  47              		.loc 1 127 0
+  48 0004 FFF7FEFF 		bl	Timer_Edge_ReadCapture
+  49              	.LVL0:
+  50 0008 C043     		mvns	r0, r0
+  51 000a 82B2     		uxth	r2, r0
+  52 000c 2A4D     		ldr	r5, .L3+8
+  53 000e 2A80     		strh	r2, [r5]	@ movhi
+ 128:main.c        ****     
+ 129:main.c        ****     sprintf(strbuf2, "Count: %u \r\n", new_timet);
+  54              		.loc 1 129 0
+  55 0010 2A4C     		ldr	r4, .L3+12
+  56 0012 2B49     		ldr	r1, .L3+16
+  57 0014 2046     		mov	r0, r4
+  58 0016 FFF7FEFF 		bl	sprintf
+  59              	.LVL1:
+ 130:main.c        ****     UART_PutString(strbuf2);
+  60              		.loc 1 130 0
+  61 001a 2046     		mov	r0, r4
+  62 001c FFF7FEFF 		bl	UART_PutString
+  63              	.LVL2:
+ 131:main.c        ****     
+ 132:main.c        ****     /* 487 is the count for the timer that represents straight 
+ 133:main.c        ****     Only the error term was needed to complete PID control */
+ 134:main.c        ****     PWM_Steer = 110 + kp * (487 - (double)new_timet) + kd * (speed - oldspeed);
+  64              		.loc 1 134 0
+  65 0020 2888     		ldrh	r0, [r5]
+  66 0022 FFF7FEFF 		bl	__aeabi_ui2d
+  67              	.LVL3:
+  68 0026 0246     		mov	r2, r0
+  69 0028 0B46     		mov	r3, r1
+  70 002a 21A1     		adr	r1, .L3
+  71 002c D1E90001 		ldrd	r0, [r1]
+  72 0030 FFF7FEFF 		bl	__aeabi_dsub
+  73              	.LVL4:
+  74 0034 DFF898A0 		ldr	r10, .L3+32
+  75 0038 DAE90023 		ldrd	r2, [r10]
+  76 003c FFF7FEFF 		bl	__aeabi_dmul
+  77              	.LVL5:
+  78 0040 0022     		movs	r2, #0
+  79 0042 204B     		ldr	r3, .L3+20
+  80 0044 FFF7FEFF 		bl	__aeabi_dadd
+  81              	.LVL6:
+  82 0048 8046     		mov	r8, r0
+  83 004a 8946     		mov	r9, r1
+  84 004c 1E4D     		ldr	r5, .L3+24
+  85 004e D5E90067 		ldrd	r6, [r5]
+  86 0052 D5E90223 		ldrd	r2, [r5, #8]
+  87 0056 3046     		mov	r0, r6
+  88 0058 3946     		mov	r1, r7
+  89 005a FFF7FEFF 		bl	__aeabi_dsub
+  90              	.LVL7:
+  91 005e DAE90223 		ldrd	r2, [r10, #8]
+  92 0062 FFF7FEFF 		bl	__aeabi_dmul
+  93              	.LVL8:
+  94 0066 0246     		mov	r2, r0
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 5
+
+
+  95 0068 0B46     		mov	r3, r1
+  96 006a 4046     		mov	r0, r8
+  97 006c 4946     		mov	r1, r9
+  98 006e FFF7FEFF 		bl	__aeabi_dadd
+  99              	.LVL9:
+ 100 0072 0246     		mov	r2, r0
+ 101 0074 0B46     		mov	r3, r1
+ 102 0076 DFF85C80 		ldr	r8, .L3+36
+ 103 007a C8E90023 		strd	r2, [r8]
+ 135:main.c        ****     oldspeed = speed;
+ 104              		.loc 1 135 0
+ 105 007e C5E90267 		strd	r6, [r5, #8]
+ 136:main.c        ****     speed = PWM_Steer;
+ 106              		.loc 1 136 0
+ 107 0082 C5E90023 		strd	r2, [r5]
+ 137:main.c        ****     sprintf(strbuf2, "PWM: %f \r\n", PWM_Steer);
+ 108              		.loc 1 137 0
+ 109 0086 1149     		ldr	r1, .L3+28
+ 110 0088 2046     		mov	r0, r4
+ 111 008a FFF7FEFF 		bl	sprintf
+ 112              	.LVL10:
+ 138:main.c        ****     UART_PutString(strbuf2);
+ 113              		.loc 1 138 0
+ 114 008e 2046     		mov	r0, r4
+ 115 0090 FFF7FEFF 		bl	UART_PutString
+ 116              	.LVL11:
+ 139:main.c        ****         
+ 140:main.c        ****     PWM_Servo_WriteCompare((uint8)PWM_Steer);
+ 117              		.loc 1 140 0
+ 118 0094 D8E90001 		ldrd	r0, [r8]
+ 119 0098 FFF7FEFF 		bl	__aeabi_d2uiz
+ 120              	.LVL12:
+ 121 009c C0B2     		uxtb	r0, r0
+ 122 009e FFF7FEFF 		bl	PWM_Servo_WriteCompare
+ 123              	.LVL13:
+ 141:main.c        ****     Timer_Edge_ReadStatusRegister();
+ 124              		.loc 1 141 0
+ 125 00a2 FFF7FEFF 		bl	Timer_Edge_ReadStatusRegister
+ 126              	.LVL14:
+ 127 00a6 BDE8F087 		pop	{r4, r5, r6, r7, r8, r9, r10, pc}
+ 128              	.L4:
+ 129 00aa 00BFAFF3 		.align	3
+ 129      0080
+ 130              	.L3:
+ 131 00b0 00000000 		.word	0
+ 132 00b4 00707E40 		.word	1082028032
+ 133 00b8 00000000 		.word	new_timet
+ 134 00bc 00000000 		.word	strbuf2
+ 135 00c0 00000000 		.word	.LC0
+ 136 00c4 00805B40 		.word	1079738368
+ 137 00c8 00000000 		.word	.LANCHOR1
+ 138 00cc 10000000 		.word	.LC1
+ 139 00d0 00000000 		.word	.LANCHOR0
+ 140 00d4 00000000 		.word	PWM_Steer
+ 141              		.cfi_endproc
+ 142              	.LFE65:
+ 143              		.size	turn, .-turn
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 6
+
+
+ 144              		.section	.text.stop,"ax",%progbits
+ 145              		.align	2
+ 146              		.global	stop
+ 147              		.thumb
+ 148              		.thumb_func
+ 149              		.type	stop, %function
+ 150              	stop:
+ 151              	.LFB66:
+ 142:main.c        **** }
+ 143:main.c        **** 
+ 144:main.c        **** CY_ISR(stop) {
+ 152              		.loc 1 144 0
+ 153              		.cfi_startproc
+ 154              		@ args = 0, pretend = 0, frame = 0
+ 155              		@ frame_needed = 0, uses_anonymous_args = 0
+ 156 0000 08B5     		push	{r3, lr}
+ 157              		.cfi_def_cfa_offset 8
+ 158              		.cfi_offset 3, -8
+ 159              		.cfi_offset 14, -4
+ 145:main.c        ****     PWM_Motor_WriteCompare((uint8_t) 0);
+ 160              		.loc 1 145 0
+ 161 0002 0020     		movs	r0, #0
+ 162 0004 FFF7FEFF 		bl	PWM_Motor_WriteCompare
+ 163              	.LVL15:
+ 146:main.c        ****     //PWM_Servo_Stop();
+ 147:main.c        ****     flame_found = true;
+ 164              		.loc 1 147 0
+ 165 0008 0122     		movs	r2, #1
+ 166 000a 014B     		ldr	r3, .L7
+ 167 000c 1A74     		strb	r2, [r3, #16]
+ 168 000e 08BD     		pop	{r3, pc}
+ 169              	.L8:
+ 170              		.align	2
+ 171              	.L7:
+ 172 0010 00000000 		.word	.LANCHOR1
+ 173              		.cfi_endproc
+ 174              	.LFE66:
+ 175              		.size	stop, .-stop
+ 176              		.section	.text.tempCheck,"ax",%progbits
+ 177              		.align	2
+ 178              		.global	tempCheck
+ 179              		.thumb
+ 180              		.thumb_func
+ 181              		.type	tempCheck, %function
+ 182              	tempCheck:
+ 183              	.LFB64:
+  97:main.c        ****     /*char receivedData[50]; // Buffer to store received data
+ 184              		.loc 1 97 0
+ 185              		.cfi_startproc
+ 186              		@ args = 0, pretend = 0, frame = 0
+ 187              		@ frame_needed = 0, uses_anonymous_args = 0
+ 188              		@ link register save eliminated.
+ 189 0000 7047     		bx	lr
+ 190              		.cfi_endproc
+ 191              	.LFE64:
+ 192              		.size	tempCheck, .-tempCheck
+ 193 0002 00BF     		.section	.text.main,"ax",%progbits
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 7
+
+
+ 194              		.align	2
+ 195              		.global	main
+ 196              		.thumb
+ 197              		.thumb_func
+ 198              		.type	main, %function
+ 199              	main:
+ 200              	.LFB67:
+ 148:main.c        **** }
+ 149:main.c        **** int main(void)
+ 150:main.c        **** {
+ 201              		.loc 1 150 0
+ 202              		.cfi_startproc
+ 203              		@ args = 0, pretend = 0, frame = 32
+ 204              		@ frame_needed = 0, uses_anonymous_args = 0
+ 205              		.loc 1 150 0
+ 206 0000 00B5     		push	{lr}
+ 207              		.cfi_def_cfa_offset 4
+ 208              		.cfi_offset 14, -4
+ 209 0002 89B0     		sub	sp, sp, #36
+ 210              		.cfi_def_cfa_offset 40
+ 151:main.c        ****     CyGlobalIntEnable; /* Enable global interrupts. */
+ 211              		.loc 1 151 0
+ 212              		.syntax unified
+ 213              	@ 151 "main.c" 1
+ 214 0004 62B6     		CPSIE   i
+ 215              	@ 0 "" 2
+ 152:main.c        **** 
+ 153:main.c        ****     /* Place your initialization/startup code here (e.g. MyInst_Start()) */
+ 154:main.c        ****     UART_Start();
+ 216              		.loc 1 154 0
+ 217              		.thumb
+ 218              		.syntax unified
+ 219 0006 FFF7FEFF 		bl	UART_Start
+ 220              	.LVL16:
+ 155:main.c        ****     LCD_Start();
+ 221              		.loc 1 155 0
+ 222 000a FFF7FEFF 		bl	LCD_Start
+ 223              	.LVL17:
+ 156:main.c        ****     LCD_Position(0,0);
+ 224              		.loc 1 156 0
+ 225 000e 0021     		movs	r1, #0
+ 226 0010 0846     		mov	r0, r1
+ 227 0012 FFF7FEFF 		bl	LCD_Position
+ 228              	.LVL18:
+ 157:main.c        ****     LCD_PrintString("Hello World");
+ 229              		.loc 1 157 0
+ 230 0016 2948     		ldr	r0, .L15
+ 231 0018 FFF7FEFF 		bl	LCD_PrintString
+ 232              	.LVL19:
+ 158:main.c        ****     PWM_Motor_Start();
+ 233              		.loc 1 158 0
+ 234 001c FFF7FEFF 		bl	PWM_Motor_Start
+ 235              	.LVL20:
+ 159:main.c        ****     Timer_Edge_Start();
+ 236              		.loc 1 159 0
+ 237 0020 FFF7FEFF 		bl	Timer_Edge_Start
+ 238              	.LVL21:
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 8
+
+
+ 160:main.c        ****     PWM_Servo_Start();
+ 239              		.loc 1 160 0
+ 240 0024 FFF7FEFF 		bl	PWM_Servo_Start
+ 241              	.LVL22:
+ 161:main.c        ****     Comp_Black_Start();
+ 242              		.loc 1 161 0
+ 243 0028 FFF7FEFF 		bl	Comp_Black_Start
+ 244              	.LVL23:
+ 162:main.c        ****     PWM_Fan_Start();
+ 245              		.loc 1 162 0
+ 246 002c FFF7FEFF 		bl	PWM_Fan_Start
+ 247              	.LVL24:
+ 163:main.c        ****     PWM_FanServos_Start();
+ 248              		.loc 1 163 0
+ 249 0030 FFF7FEFF 		bl	PWM_FanServos_Start
+ 250              	.LVL25:
+ 164:main.c        ****     PWM_IRServo_Start();
+ 251              		.loc 1 164 0
+ 252 0034 FFF7FEFF 		bl	PWM_IRServo_Start
+ 253              	.LVL26:
+ 165:main.c        ****     Ref_Start();
+ 254              		.loc 1 165 0
+ 255 0038 FFF7FEFF 		bl	Ref_Start
+ 256              	.LVL27:
+ 166:main.c        ****     Timer_Motor_Start();
+ 257              		.loc 1 166 0
+ 258 003c FFF7FEFF 		bl	Timer_Motor_Start
+ 259              	.LVL28:
+ 167:main.c        ****     Motor_Stop_Start();
+ 260              		.loc 1 167 0
+ 261 0040 FFF7FEFF 		bl	Motor_Stop_Start
+ 262              	.LVL29:
+ 168:main.c        ****     Motor_Stop_SetVector(stop);
+ 263              		.loc 1 168 0
+ 264 0044 1E48     		ldr	r0, .L15+4
+ 265 0046 FFF7FEFF 		bl	Motor_Stop_SetVector
+ 266              	.LVL30:
+ 169:main.c        ****     UART_Mega_Start();
+ 267              		.loc 1 169 0
+ 268 004a FFF7FEFF 		bl	UART_Mega_Start
+ 269              	.LVL31:
+ 170:main.c        ****     //UART_Mega_Sleep();
+ 171:main.c        ****     turn_Start();
+ 270              		.loc 1 171 0
+ 271 004e FFF7FEFF 		bl	turn_Start
+ 272              	.LVL32:
+ 172:main.c        ****     turn_SetVector(turn);
+ 273              		.loc 1 172 0
+ 274 0052 1C48     		ldr	r0, .L15+8
+ 275 0054 FFF7FEFF 		bl	turn_SetVector
+ 276              	.LVL33:
+ 173:main.c        ****     //Temp_received_Start();
+ 174:main.c        ****     //Temp_received_SetVector(tempCheck);
+ 175:main.c        ****     char strbuf2[32];
+ 176:main.c        ****     sprintf(strbuf2,"test\r\n");
+ 277              		.loc 1 176 0
+ 278 0058 1B4B     		ldr	r3, .L15+12
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 9
+
+
+ 279 005a 93E80300 		ldmia	r3, {r0, r1}
+ 280 005e 0090     		str	r0, [sp]
+ 281 0060 ADF80410 		strh	r1, [sp, #4]	@ movhi
+ 282 0064 090C     		lsrs	r1, r1, #16
+ 283 0066 8DF80610 		strb	r1, [sp, #6]
+ 177:main.c        ****     UART_PutString(strbuf2);
+ 284              		.loc 1 177 0
+ 285 006a 6846     		mov	r0, sp
+ 286 006c FFF7FEFF 		bl	UART_PutString
+ 287              	.LVL34:
+ 178:main.c        ****     // 2 = stop going forward flame was found and now is not, 1 = flame found, 0 = flame not found 
+ 179:main.c        ****     //Uart_mega send temp from left, then psoc send turn finished, 
+ 180:main.c        ****     // mega send highest, psoc send turn finidhed (no on the right mega send temp
+ 181:main.c        ****     //if flame found at any of them, break from flame search loop.
+ 182:main.c        ****     // 58 is center, 32 is right, 86 is left
+ 183:main.c        ****     //centered
+ 184:main.c        ****     PWM_Motor_WriteCompare((uint8_t) 40);
+ 288              		.loc 1 184 0
+ 289 0070 2820     		movs	r0, #40
+ 290 0072 FFF7FEFF 		bl	PWM_Motor_WriteCompare
+ 291              	.LVL35:
+ 185:main.c        ****     PWM_FanServos_WriteCompare1((uint8) 58); // right fan from back view
+ 292              		.loc 1 185 0
+ 293 0076 3A20     		movs	r0, #58
+ 294 0078 FFF7FEFF 		bl	PWM_FanServos_WriteCompare1
+ 295              	.LVL36:
+ 186:main.c        ****     PWM_FanServos_WriteCompare2((uint8) 58); //left fan from back view
+ 296              		.loc 1 186 0
+ 297 007c 3A20     		movs	r0, #58
+ 298 007e FFF7FEFF 		bl	PWM_FanServos_WriteCompare2
+ 299              	.LVL37:
+ 187:main.c        ****     PWM_IRServo_WriteCompare((uint8) 58);
+ 300              		.loc 1 187 0
+ 301 0082 3A20     		movs	r0, #58
+ 302 0084 FFF7FEFF 		bl	PWM_IRServo_WriteCompare
+ 303              	.LVL38:
+ 304              	.L11:
+ 305              	.LBB2:
+ 188:main.c        ****     for(;;)
+ 189:main.c        ****     {
+ 190:main.c        ****         /* Place your application code here. */
+ 191:main.c        ****         double rpm = 0;
+ 192:main.c        ****         /*
+ 193:main.c        ****         if (servo_set) { //Want UART only receiving when the IR camera is set in position
+ 194:main.c        ****             UART_Mega_Wakeup();
+ 195:main.c        ****         } */
+ 196:main.c        ****         /* if the flame is close, point the servos */
+ 197:main.c        ****         /* if the flame is found, turn on the fans */
+ 198:main.c        ****         UART_Mega_PutChar(0);
+ 306              		.loc 1 198 0
+ 307 0088 0020     		movs	r0, #0
+ 308 008a FFF7FEFF 		bl	UART_Mega_PutChar
+ 309              	.LVL39:
+ 199:main.c        ****         if (flame_found) {
+ 310              		.loc 1 199 0
+ 311 008e 0F4B     		ldr	r3, .L15+16
+ 312 0090 1B7C     		ldrb	r3, [r3, #16]	@ zero_extendqisi2
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 10
+
+
+ 313 0092 002B     		cmp	r3, #0
+ 314 0094 F8D0     		beq	.L11
+ 200:main.c        ****             //centered
+ 201:main.c        ****             if (!servo_set) {
+ 315              		.loc 1 201 0
+ 316 0096 0D4B     		ldr	r3, .L15+16
+ 317 0098 5B7C     		ldrb	r3, [r3, #17]	@ zero_extendqisi2
+ 318 009a 2BB9     		cbnz	r3, .L12
+ 202:main.c        ****             PWM_FanServos_WriteCompare1((uint8) 69); // right fan from back view
+ 319              		.loc 1 202 0
+ 320 009c 4520     		movs	r0, #69
+ 321 009e FFF7FEFF 		bl	PWM_FanServos_WriteCompare1
+ 322              	.LVL40:
+ 203:main.c        ****             PWM_FanServos_WriteCompare2((uint8) 47); //left fan from back view\
+ 323              		.loc 1 203 0
+ 324 00a2 2F20     		movs	r0, #47
+ 325 00a4 FFF7FEFF 		bl	PWM_FanServos_WriteCompare2
+ 326              	.LVL41:
+ 327              	.L12:
+ 204:main.c        ****             servo_set = true;
+ 205:main.c        ****             }
+ 206:main.c        ****             rpm = 254;
+ 207:main.c        ****             //blowing
+ 208:main.c        ****             PWM_Fan_WriteCompare1((uint8) rpm);
+ 328              		.loc 1 208 0
+ 329 00a8 FE20     		movs	r0, #254
+ 330 00aa FFF7FEFF 		bl	PWM_Fan_WriteCompare1
+ 331              	.LVL42:
+ 209:main.c        ****             PWM_Fan_WriteCompare2((uint8) rpm);
+ 332              		.loc 1 209 0
+ 333 00ae FE20     		movs	r0, #254
+ 334 00b0 FFF7FEFF 		bl	PWM_Fan_WriteCompare2
+ 335              	.LVL43:
+ 210:main.c        ****             UART_Mega_PutChar(1);
+ 336              		.loc 1 210 0
+ 337 00b4 0120     		movs	r0, #1
+ 338 00b6 FFF7FEFF 		bl	UART_Mega_PutChar
+ 339              	.LVL44:
+ 340 00ba E5E7     		b	.L11
+ 341              	.L16:
+ 342              		.align	2
+ 343              	.L15:
+ 344 00bc 1C000000 		.word	.LC2
+ 345 00c0 00000000 		.word	stop
+ 346 00c4 00000000 		.word	turn
+ 347 00c8 28000000 		.word	.LC3
+ 348 00cc 00000000 		.word	.LANCHOR1
+ 349              	.LBE2:
+ 350              		.cfi_endproc
+ 351              	.LFE67:
+ 352              		.size	main, .-main
+ 353              		.comm	new_timet,2,2
+ 354              		.global	kd
+ 355              		.global	kp
+ 356              		.comm	PWM_Steer,8,8
+ 357              		.comm	strbuf2,16,4
+ 358              		.comm	percent,8,8
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 11
+
+
+ 359              		.global	diameter
+ 360              		.global	Kd
+ 361              		.global	Ki
+ 362              		.global	Kp
+ 363              		.global	derivative
+ 364              		.global	integration
+ 365              		.global	error
+ 366              		.global	n
+ 367              		.global	n0
+ 368              		.global	target
+ 369              		.global	speed
+ 370              		.global	oldspeed
+ 371              		.global	dt
+ 372              		.global	new_time
+ 373              		.global	old_time
+ 374              		.global	flame_found
+ 375              		.global	servo_set
+ 376              		.data
+ 377              		.align	3
+ 378              		.set	.LANCHOR0,. + 0
+ 379              		.type	kp, %object
+ 380              		.size	kp, 8
+ 381              	kp:
+ 382 0000 9A999999 		.word	-1717986918
+ 383 0004 9999C9BF 		.word	-1077306983
+ 384              		.type	kd, %object
+ 385              		.size	kd, 8
+ 386              	kd:
+ 387 0008 9A999999 		.word	-1717986918
+ 388 000c 9999C9BF 		.word	-1077306983
+ 389              		.type	diameter, %object
+ 390              		.size	diameter, 8
+ 391              	diameter:
+ 392 0010 F33CB83B 		.word	1001929971
+ 393 0014 6BB7CB3F 		.word	1070315371
+ 394              		.type	Ki, %object
+ 395              		.size	Ki, 8
+ 396              	Ki:
+ 397 0018 00000000 		.word	0
+ 398 001c 0000F03F 		.word	1072693248
+ 399              		.type	Kp, %object
+ 400              		.size	Kp, 8
+ 401              	Kp:
+ 402 0020 00000000 		.word	0
+ 403 0024 00005440 		.word	1079246848
+ 404              		.type	n, %object
+ 405              		.size	n, 8
+ 406              	n:
+ 407 0028 00000000 		.word	0
+ 408 002c 00004940 		.word	1078525952
+ 409              		.type	n0, %object
+ 410              		.size	n0, 8
+ 411              	n0:
+ 412 0030 00000000 		.word	0
+ 413 0034 00004940 		.word	1078525952
+ 414              		.type	target, %object
+ 415              		.size	target, 8
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 12
+
+
+ 416              	target:
+ 417 0038 00000000 		.word	0
+ 418 003c 00001040 		.word	1074790400
+ 419              		.type	old_time, %object
+ 420              		.size	old_time, 2
+ 421              	old_time:
+ 422 0040 FFFF     		.short	-1
+ 423              		.section	.rodata.str1.4,"aMS",%progbits,1
+ 424              		.align	2
+ 425              	.LC0:
+ 426 0000 436F756E 		.ascii	"Count: %u \015\012\000"
+ 426      743A2025 
+ 426      75200D0A 
+ 426      00
+ 427 000d 000000   		.space	3
+ 428              	.LC1:
+ 429 0010 50574D3A 		.ascii	"PWM: %f \015\012\000"
+ 429      20256620 
+ 429      0D0A00
+ 430 001b 00       		.space	1
+ 431              	.LC2:
+ 432 001c 48656C6C 		.ascii	"Hello World\000"
+ 432      6F20576F 
+ 432      726C6400 
+ 433              	.LC3:
+ 434 0028 74657374 		.ascii	"test\015\012\000"
+ 434      0D0A00
+ 435              		.bss
+ 436              		.align	3
+ 437              		.set	.LANCHOR1,. + 0
+ 438              		.type	speed, %object
+ 439              		.size	speed, 8
+ 440              	speed:
+ 441 0000 00000000 		.space	8
+ 441      00000000 
+ 442              		.type	oldspeed, %object
+ 443              		.size	oldspeed, 8
+ 444              	oldspeed:
+ 445 0008 00000000 		.space	8
+ 445      00000000 
+ 446              		.type	flame_found, %object
+ 447              		.size	flame_found, 1
+ 448              	flame_found:
+ 449 0010 00       		.space	1
+ 450              		.type	servo_set, %object
+ 451              		.size	servo_set, 1
+ 452              	servo_set:
+ 453 0011 00       		.space	1
+ 454 0012 00000000 		.space	6
+ 454      0000
+ 455              		.type	Kd, %object
+ 456              		.size	Kd, 8
+ 457              	Kd:
+ 458 0018 00000000 		.space	8
+ 458      00000000 
+ 459              		.type	derivative, %object
+ 460              		.size	derivative, 8
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 13
+
+
+ 461              	derivative:
+ 462 0020 00000000 		.space	8
+ 462      00000000 
+ 463              		.type	integration, %object
+ 464              		.size	integration, 8
+ 465              	integration:
+ 466 0028 00000000 		.space	8
+ 466      00000000 
+ 467              		.type	error, %object
+ 468              		.size	error, 8
+ 469              	error:
+ 470 0030 00000000 		.space	8
+ 470      00000000 
+ 471              		.type	dt, %object
+ 472              		.size	dt, 2
+ 473              	dt:
+ 474 0038 0000     		.space	2
+ 475              		.type	new_time, %object
+ 476              		.size	new_time, 2
+ 477              	new_time:
+ 478 003a 0000     		.space	2
+ 479              		.text
+ 480              	.Letext0:
+ 481              		.file 2 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 482              		.file 3 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 483              		.file 4 "Generated_Source\\PSoC5/cytypes.h"
+ 484              		.file 5 "Generated_Source\\PSoC5/core_cm3.h"
+ 485              		.file 6 "Generated_Source\\PSoC5/Timer_Edge.h"
+ 486              		.file 7 "c:\\program files (x86)\\cypress\\psoc creator\\4.4\\psoc creator\\import\\gnu\\arm\\5.4.
+ 487              		.file 8 "Generated_Source\\PSoC5/UART.h"
+ 488              		.file 9 "Generated_Source\\PSoC5/PWM_Servo.h"
+ 489              		.file 10 "Generated_Source\\PSoC5/PWM_Motor.h"
+ 490              		.file 11 "Generated_Source\\PSoC5/UART_Mega.h"
+ 491              		.file 12 "Generated_Source\\PSoC5/PWM_FanServos.h"
+ 492              		.file 13 "Generated_Source\\PSoC5/PWM_Fan.h"
+ 493              		.file 14 "Generated_Source\\PSoC5/LCD.h"
+ 494              		.file 15 "Generated_Source\\PSoC5/Comp_Black.h"
+ 495              		.file 16 "Generated_Source\\PSoC5/PWM_IRServo.h"
+ 496              		.file 17 "Generated_Source\\PSoC5/Ref.h"
+ 497              		.file 18 "Generated_Source\\PSoC5/Timer_Motor.h"
+ 498              		.file 19 "Generated_Source\\PSoC5/Motor_Stop.h"
+ 499              		.file 20 "Generated_Source\\PSoC5/turn.h"
+ 500              		.section	.debug_info,"",%progbits
+ 501              	.Ldebug_info0:
+ 502 0000 8A060000 		.4byte	0x68a
+ 503 0004 0400     		.2byte	0x4
+ 504 0006 00000000 		.4byte	.Ldebug_abbrev0
+ 505 000a 04       		.byte	0x4
+ 506 000b 01       		.uleb128 0x1
+ 507 000c ED030000 		.4byte	.LASF69
+ 508 0010 0C       		.byte	0xc
+ 509 0011 3E030000 		.4byte	.LASF70
+ 510 0015 7A010000 		.4byte	.LASF71
+ 511 0019 00000000 		.4byte	.Ldebug_ranges0+0
+ 512 001d 00000000 		.4byte	0
+ 513 0021 00000000 		.4byte	.Ldebug_line0
+ 514 0025 02       		.uleb128 0x2
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 14
+
+
+ 515 0026 01       		.byte	0x1
+ 516 0027 06       		.byte	0x6
+ 517 0028 FF010000 		.4byte	.LASF0
+ 518 002c 03       		.uleb128 0x3
+ 519 002d 20010000 		.4byte	.LASF4
+ 520 0031 02       		.byte	0x2
+ 521 0032 1D       		.byte	0x1d
+ 522 0033 37000000 		.4byte	0x37
+ 523 0037 02       		.uleb128 0x2
+ 524 0038 01       		.byte	0x1
+ 525 0039 08       		.byte	0x8
+ 526 003a E9010000 		.4byte	.LASF1
+ 527 003e 02       		.uleb128 0x2
+ 528 003f 02       		.byte	0x2
+ 529 0040 05       		.byte	0x5
+ 530 0041 39000000 		.4byte	.LASF2
+ 531 0045 02       		.uleb128 0x2
+ 532 0046 02       		.byte	0x2
+ 533 0047 07       		.byte	0x7
+ 534 0048 C3020000 		.4byte	.LASF3
+ 535 004c 03       		.uleb128 0x3
+ 536 004d 6E030000 		.4byte	.LASF5
+ 537 0051 02       		.byte	0x2
+ 538 0052 3F       		.byte	0x3f
+ 539 0053 57000000 		.4byte	0x57
+ 540 0057 02       		.uleb128 0x2
+ 541 0058 04       		.byte	0x4
+ 542 0059 05       		.byte	0x5
+ 543 005a 06010000 		.4byte	.LASF6
+ 544 005e 02       		.uleb128 0x2
+ 545 005f 04       		.byte	0x4
+ 546 0060 07       		.byte	0x7
+ 547 0061 45030000 		.4byte	.LASF7
+ 548 0065 02       		.uleb128 0x2
+ 549 0066 08       		.byte	0x8
+ 550 0067 05       		.byte	0x5
+ 551 0068 F8000000 		.4byte	.LASF8
+ 552 006c 02       		.uleb128 0x2
+ 553 006d 08       		.byte	0x8
+ 554 006e 07       		.byte	0x7
+ 555 006f 0B020000 		.4byte	.LASF9
+ 556 0073 04       		.uleb128 0x4
+ 557 0074 04       		.byte	0x4
+ 558 0075 05       		.byte	0x5
+ 559 0076 696E7400 		.ascii	"int\000"
+ 560 007a 02       		.uleb128 0x2
+ 561 007b 04       		.byte	0x4
+ 562 007c 07       		.byte	0x7
+ 563 007d 51020000 		.4byte	.LASF10
+ 564 0081 03       		.uleb128 0x3
+ 565 0082 88030000 		.4byte	.LASF11
+ 566 0086 03       		.byte	0x3
+ 567 0087 18       		.byte	0x18
+ 568 0088 2C000000 		.4byte	0x2c
+ 569 008c 03       		.uleb128 0x3
+ 570 008d 19030000 		.4byte	.LASF12
+ 571 0091 03       		.byte	0x3
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 15
+
+
+ 572 0092 2C       		.byte	0x2c
+ 573 0093 4C000000 		.4byte	0x4c
+ 574 0097 05       		.uleb128 0x5
+ 575 0098 D9000000 		.4byte	.LASF13
+ 576 009c 04       		.byte	0x4
+ 577 009d E801     		.2byte	0x1e8
+ 578 009f 37000000 		.4byte	0x37
+ 579 00a3 05       		.uleb128 0x5
+ 580 00a4 BE000000 		.4byte	.LASF14
+ 581 00a8 04       		.byte	0x4
+ 582 00a9 E901     		.2byte	0x1e9
+ 583 00ab 45000000 		.4byte	0x45
+ 584 00af 02       		.uleb128 0x2
+ 585 00b0 04       		.byte	0x4
+ 586 00b1 04       		.byte	0x4
+ 587 00b2 F2000000 		.4byte	.LASF15
+ 588 00b6 02       		.uleb128 0x2
+ 589 00b7 08       		.byte	0x8
+ 590 00b8 04       		.byte	0x4
+ 591 00b9 57030000 		.4byte	.LASF16
+ 592 00bd 02       		.uleb128 0x2
+ 593 00be 01       		.byte	0x1
+ 594 00bf 08       		.byte	0x8
+ 595 00c0 EA020000 		.4byte	.LASF17
+ 596 00c4 02       		.uleb128 0x2
+ 597 00c5 08       		.byte	0x8
+ 598 00c6 04       		.byte	0x4
+ 599 00c7 DD010000 		.4byte	.LASF18
+ 600 00cb 02       		.uleb128 0x2
+ 601 00cc 04       		.byte	0x4
+ 602 00cd 07       		.byte	0x7
+ 603 00ce 98030000 		.4byte	.LASF19
+ 604 00d2 06       		.uleb128 0x6
+ 605 00d3 A6020000 		.4byte	.LASF20
+ 606 00d7 01       		.byte	0x1
+ 607 00d8 7D       		.byte	0x7d
+ 608 00d9 00000000 		.4byte	.LFB65
+ 609 00dd D8000000 		.4byte	.LFE65-.LFB65
+ 610 00e1 01       		.uleb128 0x1
+ 611 00e2 9C       		.byte	0x9c
+ 612 00e3 65010000 		.4byte	0x165
+ 613 00e7 07       		.uleb128 0x7
+ 614 00e8 08000000 		.4byte	.LVL0
+ 615 00ec 43050000 		.4byte	0x543
+ 616 00f0 08       		.uleb128 0x8
+ 617 00f1 1A000000 		.4byte	.LVL1
+ 618 00f5 4E050000 		.4byte	0x54e
+ 619 00f9 0D010000 		.4byte	0x10d
+ 620 00fd 09       		.uleb128 0x9
+ 621 00fe 01       		.uleb128 0x1
+ 622 00ff 50       		.byte	0x50
+ 623 0100 02       		.uleb128 0x2
+ 624 0101 74       		.byte	0x74
+ 625 0102 00       		.sleb128 0
+ 626 0103 09       		.uleb128 0x9
+ 627 0104 01       		.uleb128 0x1
+ 628 0105 51       		.byte	0x51
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 16
+
+
+ 629 0106 05       		.uleb128 0x5
+ 630 0107 03       		.byte	0x3
+ 631 0108 00000000 		.4byte	.LC0
+ 632 010c 00       		.byte	0
+ 633 010d 08       		.uleb128 0x8
+ 634 010e 20000000 		.4byte	.LVL2
+ 635 0112 59050000 		.4byte	0x559
+ 636 0116 21010000 		.4byte	0x121
+ 637 011a 09       		.uleb128 0x9
+ 638 011b 01       		.uleb128 0x1
+ 639 011c 50       		.byte	0x50
+ 640 011d 02       		.uleb128 0x2
+ 641 011e 74       		.byte	0x74
+ 642 011f 00       		.sleb128 0
+ 643 0120 00       		.byte	0
+ 644 0121 08       		.uleb128 0x8
+ 645 0122 8E000000 		.4byte	.LVL10
+ 646 0126 4E050000 		.4byte	0x54e
+ 647 012a 3E010000 		.4byte	0x13e
+ 648 012e 09       		.uleb128 0x9
+ 649 012f 01       		.uleb128 0x1
+ 650 0130 50       		.byte	0x50
+ 651 0131 02       		.uleb128 0x2
+ 652 0132 74       		.byte	0x74
+ 653 0133 00       		.sleb128 0
+ 654 0134 09       		.uleb128 0x9
+ 655 0135 01       		.uleb128 0x1
+ 656 0136 51       		.byte	0x51
+ 657 0137 05       		.uleb128 0x5
+ 658 0138 03       		.byte	0x3
+ 659 0139 10000000 		.4byte	.LC1
+ 660 013d 00       		.byte	0
+ 661 013e 08       		.uleb128 0x8
+ 662 013f 94000000 		.4byte	.LVL11
+ 663 0143 59050000 		.4byte	0x559
+ 664 0147 52010000 		.4byte	0x152
+ 665 014b 09       		.uleb128 0x9
+ 666 014c 01       		.uleb128 0x1
+ 667 014d 50       		.byte	0x50
+ 668 014e 02       		.uleb128 0x2
+ 669 014f 74       		.byte	0x74
+ 670 0150 00       		.sleb128 0
+ 671 0151 00       		.byte	0
+ 672 0152 07       		.uleb128 0x7
+ 673 0153 A2000000 		.4byte	.LVL13
+ 674 0157 64050000 		.4byte	0x564
+ 675 015b 07       		.uleb128 0x7
+ 676 015c A6000000 		.4byte	.LVL14
+ 677 0160 6F050000 		.4byte	0x56f
+ 678 0164 00       		.byte	0
+ 679 0165 0A       		.uleb128 0xa
+ 680 0166 E5020000 		.4byte	.LASF21
+ 681 016a 01       		.byte	0x1
+ 682 016b 90       		.byte	0x90
+ 683 016c 00000000 		.4byte	.LFB66
+ 684 0170 14000000 		.4byte	.LFE66-.LFB66
+ 685 0174 01       		.uleb128 0x1
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 17
+
+
+ 686 0175 9C       		.byte	0x9c
+ 687 0176 8A010000 		.4byte	0x18a
+ 688 017a 0B       		.uleb128 0xb
+ 689 017b 08000000 		.4byte	.LVL15
+ 690 017f 7A050000 		.4byte	0x57a
+ 691 0183 09       		.uleb128 0x9
+ 692 0184 01       		.uleb128 0x1
+ 693 0185 50       		.byte	0x50
+ 694 0186 01       		.uleb128 0x1
+ 695 0187 30       		.byte	0x30
+ 696 0188 00       		.byte	0
+ 697 0189 00       		.byte	0
+ 698 018a 0C       		.uleb128 0xc
+ 699 018b 84040000 		.4byte	.LASF72
+ 700 018f 01       		.byte	0x1
+ 701 0190 61       		.byte	0x61
+ 702 0191 00000000 		.4byte	.LFB64
+ 703 0195 02000000 		.4byte	.LFE64-.LFB64
+ 704 0199 01       		.uleb128 0x1
+ 705 019a 9C       		.byte	0x9c
+ 706 019b 0D       		.uleb128 0xd
+ 707 019c 83000000 		.4byte	.LASF73
+ 708 01a0 01       		.byte	0x1
+ 709 01a1 95       		.byte	0x95
+ 710 01a2 73000000 		.4byte	0x73
+ 711 01a6 00000000 		.4byte	.LFB67
+ 712 01aa D0000000 		.4byte	.LFE67-.LFB67
+ 713 01ae 01       		.uleb128 0x1
+ 714 01af 9C       		.byte	0x9c
+ 715 01b0 8D030000 		.4byte	0x38d
+ 716 01b4 0E       		.uleb128 0xe
+ 717 01b5 AE030000 		.4byte	.LASF22
+ 718 01b9 01       		.byte	0x1
+ 719 01ba AF       		.byte	0xaf
+ 720 01bb 8D030000 		.4byte	0x38d
+ 721 01bf 02       		.uleb128 0x2
+ 722 01c0 91       		.byte	0x91
+ 723 01c1 58       		.sleb128 -40
+ 724 01c2 0F       		.uleb128 0xf
+ 725 01c3 88000000 		.4byte	.LBB2
+ 726 01c7 48000000 		.4byte	.LBE2-.LBB2
+ 727 01cb 51020000 		.4byte	0x251
+ 728 01cf 10       		.uleb128 0x10
+ 729 01d0 72706D00 		.ascii	"rpm\000"
+ 730 01d4 01       		.byte	0x1
+ 731 01d5 BF       		.byte	0xbf
+ 732 01d6 B6000000 		.4byte	0xb6
+ 733 01da 00000000 		.4byte	.LLST0
+ 734 01de 08       		.uleb128 0x8
+ 735 01df 8E000000 		.4byte	.LVL39
+ 736 01e3 85050000 		.4byte	0x585
+ 737 01e7 F1010000 		.4byte	0x1f1
+ 738 01eb 09       		.uleb128 0x9
+ 739 01ec 01       		.uleb128 0x1
+ 740 01ed 50       		.byte	0x50
+ 741 01ee 01       		.uleb128 0x1
+ 742 01ef 30       		.byte	0x30
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 18
+
+
+ 743 01f0 00       		.byte	0
+ 744 01f1 08       		.uleb128 0x8
+ 745 01f2 A2000000 		.4byte	.LVL40
+ 746 01f6 90050000 		.4byte	0x590
+ 747 01fa 05020000 		.4byte	0x205
+ 748 01fe 09       		.uleb128 0x9
+ 749 01ff 01       		.uleb128 0x1
+ 750 0200 50       		.byte	0x50
+ 751 0201 02       		.uleb128 0x2
+ 752 0202 08       		.byte	0x8
+ 753 0203 45       		.byte	0x45
+ 754 0204 00       		.byte	0
+ 755 0205 08       		.uleb128 0x8
+ 756 0206 A8000000 		.4byte	.LVL41
+ 757 020a 9B050000 		.4byte	0x59b
+ 758 020e 19020000 		.4byte	0x219
+ 759 0212 09       		.uleb128 0x9
+ 760 0213 01       		.uleb128 0x1
+ 761 0214 50       		.byte	0x50
+ 762 0215 02       		.uleb128 0x2
+ 763 0216 08       		.byte	0x8
+ 764 0217 2F       		.byte	0x2f
+ 765 0218 00       		.byte	0
+ 766 0219 08       		.uleb128 0x8
+ 767 021a AE000000 		.4byte	.LVL42
+ 768 021e A6050000 		.4byte	0x5a6
+ 769 0222 2D020000 		.4byte	0x22d
+ 770 0226 09       		.uleb128 0x9
+ 771 0227 01       		.uleb128 0x1
+ 772 0228 50       		.byte	0x50
+ 773 0229 02       		.uleb128 0x2
+ 774 022a 09       		.byte	0x9
+ 775 022b FE       		.byte	0xfe
+ 776 022c 00       		.byte	0
+ 777 022d 08       		.uleb128 0x8
+ 778 022e B4000000 		.4byte	.LVL43
+ 779 0232 B1050000 		.4byte	0x5b1
+ 780 0236 41020000 		.4byte	0x241
+ 781 023a 09       		.uleb128 0x9
+ 782 023b 01       		.uleb128 0x1
+ 783 023c 50       		.byte	0x50
+ 784 023d 02       		.uleb128 0x2
+ 785 023e 09       		.byte	0x9
+ 786 023f FE       		.byte	0xfe
+ 787 0240 00       		.byte	0
+ 788 0241 0B       		.uleb128 0xb
+ 789 0242 BA000000 		.4byte	.LVL44
+ 790 0246 85050000 		.4byte	0x585
+ 791 024a 09       		.uleb128 0x9
+ 792 024b 01       		.uleb128 0x1
+ 793 024c 50       		.byte	0x50
+ 794 024d 01       		.uleb128 0x1
+ 795 024e 31       		.byte	0x31
+ 796 024f 00       		.byte	0
+ 797 0250 00       		.byte	0
+ 798 0251 07       		.uleb128 0x7
+ 799 0252 0A000000 		.4byte	.LVL16
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 19
+
+
+ 800 0256 BC050000 		.4byte	0x5bc
+ 801 025a 07       		.uleb128 0x7
+ 802 025b 0E000000 		.4byte	.LVL17
+ 803 025f C7050000 		.4byte	0x5c7
+ 804 0263 08       		.uleb128 0x8
+ 805 0264 16000000 		.4byte	.LVL18
+ 806 0268 D2050000 		.4byte	0x5d2
+ 807 026c 7B020000 		.4byte	0x27b
+ 808 0270 09       		.uleb128 0x9
+ 809 0271 01       		.uleb128 0x1
+ 810 0272 50       		.byte	0x50
+ 811 0273 01       		.uleb128 0x1
+ 812 0274 30       		.byte	0x30
+ 813 0275 09       		.uleb128 0x9
+ 814 0276 01       		.uleb128 0x1
+ 815 0277 51       		.byte	0x51
+ 816 0278 01       		.uleb128 0x1
+ 817 0279 30       		.byte	0x30
+ 818 027a 00       		.byte	0
+ 819 027b 08       		.uleb128 0x8
+ 820 027c 1C000000 		.4byte	.LVL19
+ 821 0280 DD050000 		.4byte	0x5dd
+ 822 0284 92020000 		.4byte	0x292
+ 823 0288 09       		.uleb128 0x9
+ 824 0289 01       		.uleb128 0x1
+ 825 028a 50       		.byte	0x50
+ 826 028b 05       		.uleb128 0x5
+ 827 028c 03       		.byte	0x3
+ 828 028d 1C000000 		.4byte	.LC2
+ 829 0291 00       		.byte	0
+ 830 0292 07       		.uleb128 0x7
+ 831 0293 20000000 		.4byte	.LVL20
+ 832 0297 E8050000 		.4byte	0x5e8
+ 833 029b 07       		.uleb128 0x7
+ 834 029c 24000000 		.4byte	.LVL21
+ 835 02a0 F3050000 		.4byte	0x5f3
+ 836 02a4 07       		.uleb128 0x7
+ 837 02a5 28000000 		.4byte	.LVL22
+ 838 02a9 FE050000 		.4byte	0x5fe
+ 839 02ad 07       		.uleb128 0x7
+ 840 02ae 2C000000 		.4byte	.LVL23
+ 841 02b2 09060000 		.4byte	0x609
+ 842 02b6 07       		.uleb128 0x7
+ 843 02b7 30000000 		.4byte	.LVL24
+ 844 02bb 14060000 		.4byte	0x614
+ 845 02bf 07       		.uleb128 0x7
+ 846 02c0 34000000 		.4byte	.LVL25
+ 847 02c4 1F060000 		.4byte	0x61f
+ 848 02c8 07       		.uleb128 0x7
+ 849 02c9 38000000 		.4byte	.LVL26
+ 850 02cd 2A060000 		.4byte	0x62a
+ 851 02d1 07       		.uleb128 0x7
+ 852 02d2 3C000000 		.4byte	.LVL27
+ 853 02d6 35060000 		.4byte	0x635
+ 854 02da 07       		.uleb128 0x7
+ 855 02db 40000000 		.4byte	.LVL28
+ 856 02df 40060000 		.4byte	0x640
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 20
+
+
+ 857 02e3 07       		.uleb128 0x7
+ 858 02e4 44000000 		.4byte	.LVL29
+ 859 02e8 4B060000 		.4byte	0x64b
+ 860 02ec 08       		.uleb128 0x8
+ 861 02ed 4A000000 		.4byte	.LVL30
+ 862 02f1 56060000 		.4byte	0x656
+ 863 02f5 03030000 		.4byte	0x303
+ 864 02f9 09       		.uleb128 0x9
+ 865 02fa 01       		.uleb128 0x1
+ 866 02fb 50       		.byte	0x50
+ 867 02fc 05       		.uleb128 0x5
+ 868 02fd 03       		.byte	0x3
+ 869 02fe 00000000 		.4byte	stop
+ 870 0302 00       		.byte	0
+ 871 0303 07       		.uleb128 0x7
+ 872 0304 4E000000 		.4byte	.LVL31
+ 873 0308 61060000 		.4byte	0x661
+ 874 030c 07       		.uleb128 0x7
+ 875 030d 52000000 		.4byte	.LVL32
+ 876 0311 6C060000 		.4byte	0x66c
+ 877 0315 08       		.uleb128 0x8
+ 878 0316 58000000 		.4byte	.LVL33
+ 879 031a 77060000 		.4byte	0x677
+ 880 031e 2C030000 		.4byte	0x32c
+ 881 0322 09       		.uleb128 0x9
+ 882 0323 01       		.uleb128 0x1
+ 883 0324 50       		.byte	0x50
+ 884 0325 05       		.uleb128 0x5
+ 885 0326 03       		.byte	0x3
+ 886 0327 00000000 		.4byte	turn
+ 887 032b 00       		.byte	0
+ 888 032c 08       		.uleb128 0x8
+ 889 032d 70000000 		.4byte	.LVL34
+ 890 0331 59050000 		.4byte	0x559
+ 891 0335 40030000 		.4byte	0x340
+ 892 0339 09       		.uleb128 0x9
+ 893 033a 01       		.uleb128 0x1
+ 894 033b 50       		.byte	0x50
+ 895 033c 02       		.uleb128 0x2
+ 896 033d 7D       		.byte	0x7d
+ 897 033e 00       		.sleb128 0
+ 898 033f 00       		.byte	0
+ 899 0340 08       		.uleb128 0x8
+ 900 0341 76000000 		.4byte	.LVL35
+ 901 0345 7A050000 		.4byte	0x57a
+ 902 0349 54030000 		.4byte	0x354
+ 903 034d 09       		.uleb128 0x9
+ 904 034e 01       		.uleb128 0x1
+ 905 034f 50       		.byte	0x50
+ 906 0350 02       		.uleb128 0x2
+ 907 0351 08       		.byte	0x8
+ 908 0352 28       		.byte	0x28
+ 909 0353 00       		.byte	0
+ 910 0354 08       		.uleb128 0x8
+ 911 0355 7C000000 		.4byte	.LVL36
+ 912 0359 90050000 		.4byte	0x590
+ 913 035d 68030000 		.4byte	0x368
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 21
+
+
+ 914 0361 09       		.uleb128 0x9
+ 915 0362 01       		.uleb128 0x1
+ 916 0363 50       		.byte	0x50
+ 917 0364 02       		.uleb128 0x2
+ 918 0365 08       		.byte	0x8
+ 919 0366 3A       		.byte	0x3a
+ 920 0367 00       		.byte	0
+ 921 0368 08       		.uleb128 0x8
+ 922 0369 82000000 		.4byte	.LVL37
+ 923 036d 9B050000 		.4byte	0x59b
+ 924 0371 7C030000 		.4byte	0x37c
+ 925 0375 09       		.uleb128 0x9
+ 926 0376 01       		.uleb128 0x1
+ 927 0377 50       		.byte	0x50
+ 928 0378 02       		.uleb128 0x2
+ 929 0379 08       		.byte	0x8
+ 930 037a 3A       		.byte	0x3a
+ 931 037b 00       		.byte	0
+ 932 037c 0B       		.uleb128 0xb
+ 933 037d 88000000 		.4byte	.LVL38
+ 934 0381 82060000 		.4byte	0x682
+ 935 0385 09       		.uleb128 0x9
+ 936 0386 01       		.uleb128 0x1
+ 937 0387 50       		.byte	0x50
+ 938 0388 02       		.uleb128 0x2
+ 939 0389 08       		.byte	0x8
+ 940 038a 3A       		.byte	0x3a
+ 941 038b 00       		.byte	0
+ 942 038c 00       		.byte	0
+ 943 038d 11       		.uleb128 0x11
+ 944 038e BD000000 		.4byte	0xbd
+ 945 0392 9D030000 		.4byte	0x39d
+ 946 0396 12       		.uleb128 0x12
+ 947 0397 CB000000 		.4byte	0xcb
+ 948 039b 1F       		.byte	0x1f
+ 949 039c 00       		.byte	0
+ 950 039d 13       		.uleb128 0x13
+ 951 039e E0030000 		.4byte	.LASF23
+ 952 03a2 05       		.byte	0x5
+ 953 03a3 1207     		.2byte	0x712
+ 954 03a5 A9030000 		.4byte	0x3a9
+ 955 03a9 14       		.uleb128 0x14
+ 956 03aa 8C000000 		.4byte	0x8c
+ 957 03ae 15       		.uleb128 0x15
+ 958 03af 88000000 		.4byte	.LASF24
+ 959 03b3 01       		.byte	0x1
+ 960 03b4 11       		.byte	0x11
+ 961 03b5 BF030000 		.4byte	0x3bf
+ 962 03b9 05       		.uleb128 0x5
+ 963 03ba 03       		.byte	0x3
+ 964 03bb 00000000 		.4byte	servo_set
+ 965 03bf 02       		.uleb128 0x2
+ 966 03c0 01       		.byte	0x1
+ 967 03c1 02       		.byte	0x2
+ 968 03c2 21030000 		.4byte	.LASF25
+ 969 03c6 15       		.uleb128 0x15
+ 970 03c7 12000000 		.4byte	.LASF26
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 22
+
+
+ 971 03cb 01       		.byte	0x1
+ 972 03cc 12       		.byte	0x12
+ 973 03cd BF030000 		.4byte	0x3bf
+ 974 03d1 05       		.uleb128 0x5
+ 975 03d2 03       		.byte	0x3
+ 976 03d3 00000000 		.4byte	flame_found
+ 977 03d7 15       		.uleb128 0x15
+ 978 03d8 7B040000 		.4byte	.LASF27
+ 979 03dc 01       		.byte	0x1
+ 980 03dd 14       		.byte	0x14
+ 981 03de A3000000 		.4byte	0xa3
+ 982 03e2 05       		.uleb128 0x5
+ 983 03e3 03       		.byte	0x3
+ 984 03e4 00000000 		.4byte	old_time
+ 985 03e8 15       		.uleb128 0x15
+ 986 03e9 29000000 		.4byte	.LASF28
+ 987 03ed 01       		.byte	0x1
+ 988 03ee 15       		.byte	0x15
+ 989 03ef A3000000 		.4byte	0xa3
+ 990 03f3 05       		.uleb128 0x5
+ 991 03f4 03       		.byte	0x3
+ 992 03f5 00000000 		.4byte	new_time
+ 993 03f9 16       		.uleb128 0x16
+ 994 03fa 647400   		.ascii	"dt\000"
+ 995 03fd 01       		.byte	0x1
+ 996 03fe 16       		.byte	0x16
+ 997 03ff A3000000 		.4byte	0xa3
+ 998 0403 05       		.uleb128 0x5
+ 999 0404 03       		.byte	0x3
+ 1000 0405 00000000 		.4byte	dt
+ 1001 0409 15       		.uleb128 0x15
+ 1002 040a DF000000 		.4byte	.LASF29
+ 1003 040e 01       		.byte	0x1
+ 1004 040f 17       		.byte	0x17
+ 1005 0410 B6000000 		.4byte	0xb6
+ 1006 0414 05       		.uleb128 0x5
+ 1007 0415 03       		.byte	0x3
+ 1008 0416 00000000 		.4byte	oldspeed
+ 1009 041a 15       		.uleb128 0x15
+ 1010 041b AB020000 		.4byte	.LASF30
+ 1011 041f 01       		.byte	0x1
+ 1012 0420 18       		.byte	0x18
+ 1013 0421 B6000000 		.4byte	0xb6
+ 1014 0425 05       		.uleb128 0x5
+ 1015 0426 03       		.byte	0x3
+ 1016 0427 00000000 		.4byte	speed
+ 1017 042b 15       		.uleb128 0x15
+ 1018 042c 32000000 		.4byte	.LASF31
+ 1019 0430 01       		.byte	0x1
+ 1020 0431 19       		.byte	0x19
+ 1021 0432 B6000000 		.4byte	0xb6
+ 1022 0436 05       		.uleb128 0x5
+ 1023 0437 03       		.byte	0x3
+ 1024 0438 00000000 		.4byte	target
+ 1025 043c 16       		.uleb128 0x16
+ 1026 043d 6E3000   		.ascii	"n0\000"
+ 1027 0440 01       		.byte	0x1
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 23
+
+
+ 1028 0441 1A       		.byte	0x1a
+ 1029 0442 B6000000 		.4byte	0xb6
+ 1030 0446 05       		.uleb128 0x5
+ 1031 0447 03       		.byte	0x3
+ 1032 0448 00000000 		.4byte	n0
+ 1033 044c 16       		.uleb128 0x16
+ 1034 044d 6E00     		.ascii	"n\000"
+ 1035 044f 01       		.byte	0x1
+ 1036 0450 1B       		.byte	0x1b
+ 1037 0451 B6000000 		.4byte	0xb6
+ 1038 0455 05       		.uleb128 0x5
+ 1039 0456 03       		.byte	0x3
+ 1040 0457 00000000 		.4byte	n
+ 1041 045b 15       		.uleb128 0x15
+ 1042 045c C0030000 		.4byte	.LASF32
+ 1043 0460 01       		.byte	0x1
+ 1044 0461 1C       		.byte	0x1c
+ 1045 0462 B6000000 		.4byte	0xb6
+ 1046 0466 05       		.uleb128 0x5
+ 1047 0467 03       		.byte	0x3
+ 1048 0468 00000000 		.4byte	error
+ 1049 046c 15       		.uleb128 0x15
+ 1050 046d 0D030000 		.4byte	.LASF33
+ 1051 0471 01       		.byte	0x1
+ 1052 0472 1D       		.byte	0x1d
+ 1053 0473 B6000000 		.4byte	0xb6
+ 1054 0477 05       		.uleb128 0x5
+ 1055 0478 03       		.byte	0x3
+ 1056 0479 00000000 		.4byte	integration
+ 1057 047d 15       		.uleb128 0x15
+ 1058 047e A4000000 		.4byte	.LASF34
+ 1059 0482 01       		.byte	0x1
+ 1060 0483 1E       		.byte	0x1e
+ 1061 0484 B6000000 		.4byte	0xb6
+ 1062 0488 05       		.uleb128 0x5
+ 1063 0489 03       		.byte	0x3
+ 1064 048a 00000000 		.4byte	derivative
+ 1065 048e 16       		.uleb128 0x16
+ 1066 048f 4B7000   		.ascii	"Kp\000"
+ 1067 0492 01       		.byte	0x1
+ 1068 0493 1F       		.byte	0x1f
+ 1069 0494 B6000000 		.4byte	0xb6
+ 1070 0498 05       		.uleb128 0x5
+ 1071 0499 03       		.byte	0x3
+ 1072 049a 00000000 		.4byte	Kp
+ 1073 049e 16       		.uleb128 0x16
+ 1074 049f 4B6900   		.ascii	"Ki\000"
+ 1075 04a2 01       		.byte	0x1
+ 1076 04a3 20       		.byte	0x20
+ 1077 04a4 B6000000 		.4byte	0xb6
+ 1078 04a8 05       		.uleb128 0x5
+ 1079 04a9 03       		.byte	0x3
+ 1080 04aa 00000000 		.4byte	Ki
+ 1081 04ae 16       		.uleb128 0x16
+ 1082 04af 4B6400   		.ascii	"Kd\000"
+ 1083 04b2 01       		.byte	0x1
+ 1084 04b3 21       		.byte	0x21
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 24
+
+
+ 1085 04b4 B6000000 		.4byte	0xb6
+ 1086 04b8 05       		.uleb128 0x5
+ 1087 04b9 03       		.byte	0x3
+ 1088 04ba 00000000 		.4byte	Kd
+ 1089 04be 15       		.uleb128 0x15
+ 1090 04bf C5000000 		.4byte	.LASF35
+ 1091 04c3 01       		.byte	0x1
+ 1092 04c4 22       		.byte	0x22
+ 1093 04c5 B6000000 		.4byte	0xb6
+ 1094 04c9 05       		.uleb128 0x5
+ 1095 04ca 03       		.byte	0x3
+ 1096 04cb 00000000 		.4byte	diameter
+ 1097 04cf 15       		.uleb128 0x15
+ 1098 04d0 90030000 		.4byte	.LASF36
+ 1099 04d4 01       		.byte	0x1
+ 1100 04d5 24       		.byte	0x24
+ 1101 04d6 B6000000 		.4byte	0xb6
+ 1102 04da 05       		.uleb128 0x5
+ 1103 04db 03       		.byte	0x3
+ 1104 04dc 00000000 		.4byte	percent
+ 1105 04e0 11       		.uleb128 0x11
+ 1106 04e1 BD000000 		.4byte	0xbd
+ 1107 04e5 F0040000 		.4byte	0x4f0
+ 1108 04e9 12       		.uleb128 0x12
+ 1109 04ea CB000000 		.4byte	0xcb
+ 1110 04ee 0F       		.byte	0xf
+ 1111 04ef 00       		.byte	0
+ 1112 04f0 15       		.uleb128 0x15
+ 1113 04f1 AE030000 		.4byte	.LASF22
+ 1114 04f5 01       		.byte	0x1
+ 1115 04f6 25       		.byte	0x25
+ 1116 04f7 E0040000 		.4byte	0x4e0
+ 1117 04fb 05       		.uleb128 0x5
+ 1118 04fc 03       		.byte	0x3
+ 1119 04fd 00000000 		.4byte	strbuf2
+ 1120 0501 15       		.uleb128 0x15
+ 1121 0502 C6030000 		.4byte	.LASF37
+ 1122 0506 01       		.byte	0x1
+ 1123 0507 26       		.byte	0x26
+ 1124 0508 B6000000 		.4byte	0xb6
+ 1125 050c 05       		.uleb128 0x5
+ 1126 050d 03       		.byte	0x3
+ 1127 050e 00000000 		.4byte	PWM_Steer
+ 1128 0512 16       		.uleb128 0x16
+ 1129 0513 6B7000   		.ascii	"kp\000"
+ 1130 0516 01       		.byte	0x1
+ 1131 0517 27       		.byte	0x27
+ 1132 0518 B6000000 		.4byte	0xb6
+ 1133 051c 05       		.uleb128 0x5
+ 1134 051d 03       		.byte	0x3
+ 1135 051e 00000000 		.4byte	kp
+ 1136 0522 16       		.uleb128 0x16
+ 1137 0523 6B6400   		.ascii	"kd\000"
+ 1138 0526 01       		.byte	0x1
+ 1139 0527 28       		.byte	0x28
+ 1140 0528 B6000000 		.4byte	0xb6
+ 1141 052c 05       		.uleb128 0x5
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 25
+
+
+ 1142 052d 03       		.byte	0x3
+ 1143 052e 00000000 		.4byte	kd
+ 1144 0532 15       		.uleb128 0x15
+ 1145 0533 B6030000 		.4byte	.LASF38
+ 1146 0537 01       		.byte	0x1
+ 1147 0538 29       		.byte	0x29
+ 1148 0539 A3000000 		.4byte	0xa3
+ 1149 053d 05       		.uleb128 0x5
+ 1150 053e 03       		.byte	0x3
+ 1151 053f 00000000 		.4byte	new_timet
+ 1152 0543 17       		.uleb128 0x17
+ 1153 0544 27030000 		.4byte	.LASF39
+ 1154 0548 27030000 		.4byte	.LASF39
+ 1155 054c 06       		.byte	0x6
+ 1156 054d 6B       		.byte	0x6b
+ 1157 054e 17       		.uleb128 0x17
+ 1158 054f F7010000 		.4byte	.LASF40
+ 1159 0553 F7010000 		.4byte	.LASF40
+ 1160 0557 07       		.byte	0x7
+ 1161 0558 E7       		.byte	0xe7
+ 1162 0559 17       		.uleb128 0x17
+ 1163 055a AF000000 		.4byte	.LASF41
+ 1164 055e AF000000 		.4byte	.LASF41
+ 1165 0562 08       		.byte	0x8
+ 1166 0563 8B       		.byte	0x8b
+ 1167 0564 17       		.uleb128 0x17
+ 1168 0565 8E040000 		.4byte	.LASF42
+ 1169 0569 8E040000 		.4byte	.LASF42
+ 1170 056d 09       		.byte	0x9
+ 1171 056e C3       		.byte	0xc3
+ 1172 056f 17       		.uleb128 0x17
+ 1173 0570 EF020000 		.4byte	.LASF43
+ 1174 0574 EF020000 		.4byte	.LASF43
+ 1175 0578 06       		.byte	0x6
+ 1176 0579 5E       		.byte	0x5e
+ 1177 057a 17       		.uleb128 0x17
+ 1178 057b 6C000000 		.4byte	.LASF44
+ 1179 057f 6C000000 		.4byte	.LASF44
+ 1180 0583 0A       		.byte	0xa
+ 1181 0584 C3       		.byte	0xc3
+ 1182 0585 17       		.uleb128 0x17
+ 1183 0586 B1020000 		.4byte	.LASF45
+ 1184 058a B1020000 		.4byte	.LASF45
+ 1185 058e 0B       		.byte	0xb
+ 1186 058f 8A       		.byte	0x8a
+ 1187 0590 17       		.uleb128 0x17
+ 1188 0591 6E020000 		.4byte	.LASF46
+ 1189 0595 6E020000 		.4byte	.LASF46
+ 1190 0599 0C       		.byte	0xc
+ 1191 059a C7       		.byte	0xc7
+ 1192 059b 17       		.uleb128 0x17
+ 1193 059c 8A020000 		.4byte	.LASF47
+ 1194 05a0 8A020000 		.4byte	.LASF47
+ 1195 05a4 0C       		.byte	0xc
+ 1196 05a5 CA       		.byte	0xca
+ 1197 05a6 17       		.uleb128 0x17
+ 1198 05a7 49010000 		.4byte	.LASF48
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 26
+
+
+ 1199 05ab 49010000 		.4byte	.LASF48
+ 1200 05af 0D       		.byte	0xd
+ 1201 05b0 C7       		.byte	0xc7
+ 1202 05b1 17       		.uleb128 0x17
+ 1203 05b2 22020000 		.4byte	.LASF49
+ 1204 05b6 22020000 		.4byte	.LASF49
+ 1205 05ba 0D       		.byte	0xd
+ 1206 05bb CA       		.byte	0xca
+ 1207 05bc 17       		.uleb128 0x17
+ 1208 05bd CE000000 		.4byte	.LASF50
+ 1209 05c1 CE000000 		.4byte	.LASF50
+ 1210 05c5 08       		.byte	0x8
+ 1211 05c6 54       		.byte	0x54
+ 1212 05c7 17       		.uleb128 0x17
+ 1213 05c8 70010000 		.4byte	.LASF51
+ 1214 05cc 70010000 		.4byte	.LASF51
+ 1215 05d0 0E       		.byte	0xe
+ 1216 05d1 38       		.byte	0x38
+ 1217 05d2 17       		.uleb128 0x17
+ 1218 05d3 A1030000 		.4byte	.LASF52
+ 1219 05d7 A1030000 		.4byte	.LASF52
+ 1220 05db 0E       		.byte	0xe
+ 1221 05dc 3D       		.byte	0x3d
+ 1222 05dd 17       		.uleb128 0x17
+ 1223 05de 5E020000 		.4byte	.LASF53
+ 1224 05e2 5E020000 		.4byte	.LASF53
+ 1225 05e6 0E       		.byte	0xe
+ 1226 05e7 3C       		.byte	0x3c
+ 1227 05e8 17       		.uleb128 0x17
+ 1228 05e9 5E030000 		.4byte	.LASF54
+ 1229 05ed 5E030000 		.4byte	.LASF54
+ 1230 05f1 0A       		.byte	0xa
+ 1231 05f2 92       		.byte	0x92
+ 1232 05f3 17       		.uleb128 0x17
+ 1233 05f4 38010000 		.4byte	.LASF55
+ 1234 05f8 38010000 		.4byte	.LASF55
+ 1235 05fc 06       		.byte	0x6
+ 1236 05fd 5A       		.byte	0x5a
+ 1237 05fe 17       		.uleb128 0x17
+ 1238 05ff D0030000 		.4byte	.LASF56
+ 1239 0603 D0030000 		.4byte	.LASF56
+ 1240 0607 09       		.byte	0x9
+ 1241 0608 92       		.byte	0x92
+ 1242 0609 17       		.uleb128 0x17
+ 1243 060a 5F010000 		.4byte	.LASF57
+ 1244 060e 5F010000 		.4byte	.LASF57
+ 1245 0612 0F       		.byte	0xf
+ 1246 0613 3F       		.byte	0x3f
+ 1247 0614 17       		.uleb128 0x17
+ 1248 0615 2A010000 		.4byte	.LASF58
+ 1249 0619 2A010000 		.4byte	.LASF58
+ 1250 061d 0D       		.byte	0xd
+ 1251 061e 92       		.byte	0x92
+ 1252 061f 17       		.uleb128 0x17
+ 1253 0620 58000000 		.4byte	.LASF59
+ 1254 0624 58000000 		.4byte	.LASF59
+ 1255 0628 0C       		.byte	0xc
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 27
+
+
+ 1256 0629 92       		.byte	0x92
+ 1257 062a 17       		.uleb128 0x17
+ 1258 062b 92000000 		.4byte	.LASF60
+ 1259 062f 92000000 		.4byte	.LASF60
+ 1260 0633 10       		.byte	0x10
+ 1261 0634 92       		.byte	0x92
+ 1262 0635 17       		.uleb128 0x17
+ 1263 0636 E8000000 		.4byte	.LASF61
+ 1264 063a E8000000 		.4byte	.LASF61
+ 1265 063e 11       		.byte	0x11
+ 1266 063f 33       		.byte	0x33
+ 1267 0640 17       		.uleb128 0x17
+ 1268 0641 00000000 		.4byte	.LASF62
+ 1269 0645 00000000 		.4byte	.LASF62
+ 1270 0649 12       		.byte	0x12
+ 1271 064a 5A       		.byte	0x5a
+ 1272 064b 17       		.uleb128 0x17
+ 1273 064c 0F010000 		.4byte	.LASF63
+ 1274 0650 0F010000 		.4byte	.LASF63
+ 1275 0654 13       		.byte	0x13
+ 1276 0655 17       		.byte	0x17
+ 1277 0656 17       		.uleb128 0x17
+ 1278 0657 43000000 		.4byte	.LASF64
+ 1279 065b 43000000 		.4byte	.LASF64
+ 1280 065f 13       		.byte	0x13
+ 1281 0660 1D       		.byte	0x1d
+ 1282 0661 17       		.uleb128 0x17
+ 1283 0662 78030000 		.4byte	.LASF65
+ 1284 0666 78030000 		.4byte	.LASF65
+ 1285 066a 0B       		.byte	0xb
+ 1286 066b 54       		.byte	0x54
+ 1287 066c 17       		.uleb128 0x17
+ 1288 066d 1E000000 		.4byte	.LASF66
+ 1289 0671 1E000000 		.4byte	.LASF66
+ 1290 0675 14       		.byte	0x14
+ 1291 0676 17       		.byte	0x17
+ 1292 0677 17       		.uleb128 0x17
+ 1293 0678 D6020000 		.4byte	.LASF67
+ 1294 067c D6020000 		.4byte	.LASF67
+ 1295 0680 14       		.byte	0x14
+ 1296 0681 1D       		.byte	0x1d
+ 1297 0682 17       		.uleb128 0x17
+ 1298 0683 38020000 		.4byte	.LASF68
+ 1299 0687 38020000 		.4byte	.LASF68
+ 1300 068b 10       		.byte	0x10
+ 1301 068c C3       		.byte	0xc3
+ 1302 068d 00       		.byte	0
+ 1303              		.section	.debug_abbrev,"",%progbits
+ 1304              	.Ldebug_abbrev0:
+ 1305 0000 01       		.uleb128 0x1
+ 1306 0001 11       		.uleb128 0x11
+ 1307 0002 01       		.byte	0x1
+ 1308 0003 25       		.uleb128 0x25
+ 1309 0004 0E       		.uleb128 0xe
+ 1310 0005 13       		.uleb128 0x13
+ 1311 0006 0B       		.uleb128 0xb
+ 1312 0007 03       		.uleb128 0x3
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 28
+
+
+ 1313 0008 0E       		.uleb128 0xe
+ 1314 0009 1B       		.uleb128 0x1b
+ 1315 000a 0E       		.uleb128 0xe
+ 1316 000b 55       		.uleb128 0x55
+ 1317 000c 17       		.uleb128 0x17
+ 1318 000d 11       		.uleb128 0x11
+ 1319 000e 01       		.uleb128 0x1
+ 1320 000f 10       		.uleb128 0x10
+ 1321 0010 17       		.uleb128 0x17
+ 1322 0011 00       		.byte	0
+ 1323 0012 00       		.byte	0
+ 1324 0013 02       		.uleb128 0x2
+ 1325 0014 24       		.uleb128 0x24
+ 1326 0015 00       		.byte	0
+ 1327 0016 0B       		.uleb128 0xb
+ 1328 0017 0B       		.uleb128 0xb
+ 1329 0018 3E       		.uleb128 0x3e
+ 1330 0019 0B       		.uleb128 0xb
+ 1331 001a 03       		.uleb128 0x3
+ 1332 001b 0E       		.uleb128 0xe
+ 1333 001c 00       		.byte	0
+ 1334 001d 00       		.byte	0
+ 1335 001e 03       		.uleb128 0x3
+ 1336 001f 16       		.uleb128 0x16
+ 1337 0020 00       		.byte	0
+ 1338 0021 03       		.uleb128 0x3
+ 1339 0022 0E       		.uleb128 0xe
+ 1340 0023 3A       		.uleb128 0x3a
+ 1341 0024 0B       		.uleb128 0xb
+ 1342 0025 3B       		.uleb128 0x3b
+ 1343 0026 0B       		.uleb128 0xb
+ 1344 0027 49       		.uleb128 0x49
+ 1345 0028 13       		.uleb128 0x13
+ 1346 0029 00       		.byte	0
+ 1347 002a 00       		.byte	0
+ 1348 002b 04       		.uleb128 0x4
+ 1349 002c 24       		.uleb128 0x24
+ 1350 002d 00       		.byte	0
+ 1351 002e 0B       		.uleb128 0xb
+ 1352 002f 0B       		.uleb128 0xb
+ 1353 0030 3E       		.uleb128 0x3e
+ 1354 0031 0B       		.uleb128 0xb
+ 1355 0032 03       		.uleb128 0x3
+ 1356 0033 08       		.uleb128 0x8
+ 1357 0034 00       		.byte	0
+ 1358 0035 00       		.byte	0
+ 1359 0036 05       		.uleb128 0x5
+ 1360 0037 16       		.uleb128 0x16
+ 1361 0038 00       		.byte	0
+ 1362 0039 03       		.uleb128 0x3
+ 1363 003a 0E       		.uleb128 0xe
+ 1364 003b 3A       		.uleb128 0x3a
+ 1365 003c 0B       		.uleb128 0xb
+ 1366 003d 3B       		.uleb128 0x3b
+ 1367 003e 05       		.uleb128 0x5
+ 1368 003f 49       		.uleb128 0x49
+ 1369 0040 13       		.uleb128 0x13
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 29
+
+
+ 1370 0041 00       		.byte	0
+ 1371 0042 00       		.byte	0
+ 1372 0043 06       		.uleb128 0x6
+ 1373 0044 2E       		.uleb128 0x2e
+ 1374 0045 01       		.byte	0x1
+ 1375 0046 3F       		.uleb128 0x3f
+ 1376 0047 19       		.uleb128 0x19
+ 1377 0048 03       		.uleb128 0x3
+ 1378 0049 0E       		.uleb128 0xe
+ 1379 004a 3A       		.uleb128 0x3a
+ 1380 004b 0B       		.uleb128 0xb
+ 1381 004c 3B       		.uleb128 0x3b
+ 1382 004d 0B       		.uleb128 0xb
+ 1383 004e 27       		.uleb128 0x27
+ 1384 004f 19       		.uleb128 0x19
+ 1385 0050 11       		.uleb128 0x11
+ 1386 0051 01       		.uleb128 0x1
+ 1387 0052 12       		.uleb128 0x12
+ 1388 0053 06       		.uleb128 0x6
+ 1389 0054 40       		.uleb128 0x40
+ 1390 0055 18       		.uleb128 0x18
+ 1391 0056 9642     		.uleb128 0x2116
+ 1392 0058 19       		.uleb128 0x19
+ 1393 0059 01       		.uleb128 0x1
+ 1394 005a 13       		.uleb128 0x13
+ 1395 005b 00       		.byte	0
+ 1396 005c 00       		.byte	0
+ 1397 005d 07       		.uleb128 0x7
+ 1398 005e 898201   		.uleb128 0x4109
+ 1399 0061 00       		.byte	0
+ 1400 0062 11       		.uleb128 0x11
+ 1401 0063 01       		.uleb128 0x1
+ 1402 0064 31       		.uleb128 0x31
+ 1403 0065 13       		.uleb128 0x13
+ 1404 0066 00       		.byte	0
+ 1405 0067 00       		.byte	0
+ 1406 0068 08       		.uleb128 0x8
+ 1407 0069 898201   		.uleb128 0x4109
+ 1408 006c 01       		.byte	0x1
+ 1409 006d 11       		.uleb128 0x11
+ 1410 006e 01       		.uleb128 0x1
+ 1411 006f 31       		.uleb128 0x31
+ 1412 0070 13       		.uleb128 0x13
+ 1413 0071 01       		.uleb128 0x1
+ 1414 0072 13       		.uleb128 0x13
+ 1415 0073 00       		.byte	0
+ 1416 0074 00       		.byte	0
+ 1417 0075 09       		.uleb128 0x9
+ 1418 0076 8A8201   		.uleb128 0x410a
+ 1419 0079 00       		.byte	0
+ 1420 007a 02       		.uleb128 0x2
+ 1421 007b 18       		.uleb128 0x18
+ 1422 007c 9142     		.uleb128 0x2111
+ 1423 007e 18       		.uleb128 0x18
+ 1424 007f 00       		.byte	0
+ 1425 0080 00       		.byte	0
+ 1426 0081 0A       		.uleb128 0xa
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 30
+
+
+ 1427 0082 2E       		.uleb128 0x2e
+ 1428 0083 01       		.byte	0x1
+ 1429 0084 3F       		.uleb128 0x3f
+ 1430 0085 19       		.uleb128 0x19
+ 1431 0086 03       		.uleb128 0x3
+ 1432 0087 0E       		.uleb128 0xe
+ 1433 0088 3A       		.uleb128 0x3a
+ 1434 0089 0B       		.uleb128 0xb
+ 1435 008a 3B       		.uleb128 0x3b
+ 1436 008b 0B       		.uleb128 0xb
+ 1437 008c 27       		.uleb128 0x27
+ 1438 008d 19       		.uleb128 0x19
+ 1439 008e 11       		.uleb128 0x11
+ 1440 008f 01       		.uleb128 0x1
+ 1441 0090 12       		.uleb128 0x12
+ 1442 0091 06       		.uleb128 0x6
+ 1443 0092 40       		.uleb128 0x40
+ 1444 0093 18       		.uleb128 0x18
+ 1445 0094 9742     		.uleb128 0x2117
+ 1446 0096 19       		.uleb128 0x19
+ 1447 0097 01       		.uleb128 0x1
+ 1448 0098 13       		.uleb128 0x13
+ 1449 0099 00       		.byte	0
+ 1450 009a 00       		.byte	0
+ 1451 009b 0B       		.uleb128 0xb
+ 1452 009c 898201   		.uleb128 0x4109
+ 1453 009f 01       		.byte	0x1
+ 1454 00a0 11       		.uleb128 0x11
+ 1455 00a1 01       		.uleb128 0x1
+ 1456 00a2 31       		.uleb128 0x31
+ 1457 00a3 13       		.uleb128 0x13
+ 1458 00a4 00       		.byte	0
+ 1459 00a5 00       		.byte	0
+ 1460 00a6 0C       		.uleb128 0xc
+ 1461 00a7 2E       		.uleb128 0x2e
+ 1462 00a8 00       		.byte	0
+ 1463 00a9 3F       		.uleb128 0x3f
+ 1464 00aa 19       		.uleb128 0x19
+ 1465 00ab 03       		.uleb128 0x3
+ 1466 00ac 0E       		.uleb128 0xe
+ 1467 00ad 3A       		.uleb128 0x3a
+ 1468 00ae 0B       		.uleb128 0xb
+ 1469 00af 3B       		.uleb128 0x3b
+ 1470 00b0 0B       		.uleb128 0xb
+ 1471 00b1 27       		.uleb128 0x27
+ 1472 00b2 19       		.uleb128 0x19
+ 1473 00b3 11       		.uleb128 0x11
+ 1474 00b4 01       		.uleb128 0x1
+ 1475 00b5 12       		.uleb128 0x12
+ 1476 00b6 06       		.uleb128 0x6
+ 1477 00b7 40       		.uleb128 0x40
+ 1478 00b8 18       		.uleb128 0x18
+ 1479 00b9 9742     		.uleb128 0x2117
+ 1480 00bb 19       		.uleb128 0x19
+ 1481 00bc 00       		.byte	0
+ 1482 00bd 00       		.byte	0
+ 1483 00be 0D       		.uleb128 0xd
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 31
+
+
+ 1484 00bf 2E       		.uleb128 0x2e
+ 1485 00c0 01       		.byte	0x1
+ 1486 00c1 3F       		.uleb128 0x3f
+ 1487 00c2 19       		.uleb128 0x19
+ 1488 00c3 03       		.uleb128 0x3
+ 1489 00c4 0E       		.uleb128 0xe
+ 1490 00c5 3A       		.uleb128 0x3a
+ 1491 00c6 0B       		.uleb128 0xb
+ 1492 00c7 3B       		.uleb128 0x3b
+ 1493 00c8 0B       		.uleb128 0xb
+ 1494 00c9 27       		.uleb128 0x27
+ 1495 00ca 19       		.uleb128 0x19
+ 1496 00cb 49       		.uleb128 0x49
+ 1497 00cc 13       		.uleb128 0x13
+ 1498 00cd 8701     		.uleb128 0x87
+ 1499 00cf 19       		.uleb128 0x19
+ 1500 00d0 11       		.uleb128 0x11
+ 1501 00d1 01       		.uleb128 0x1
+ 1502 00d2 12       		.uleb128 0x12
+ 1503 00d3 06       		.uleb128 0x6
+ 1504 00d4 40       		.uleb128 0x40
+ 1505 00d5 18       		.uleb128 0x18
+ 1506 00d6 9742     		.uleb128 0x2117
+ 1507 00d8 19       		.uleb128 0x19
+ 1508 00d9 01       		.uleb128 0x1
+ 1509 00da 13       		.uleb128 0x13
+ 1510 00db 00       		.byte	0
+ 1511 00dc 00       		.byte	0
+ 1512 00dd 0E       		.uleb128 0xe
+ 1513 00de 34       		.uleb128 0x34
+ 1514 00df 00       		.byte	0
+ 1515 00e0 03       		.uleb128 0x3
+ 1516 00e1 0E       		.uleb128 0xe
+ 1517 00e2 3A       		.uleb128 0x3a
+ 1518 00e3 0B       		.uleb128 0xb
+ 1519 00e4 3B       		.uleb128 0x3b
+ 1520 00e5 0B       		.uleb128 0xb
+ 1521 00e6 49       		.uleb128 0x49
+ 1522 00e7 13       		.uleb128 0x13
+ 1523 00e8 02       		.uleb128 0x2
+ 1524 00e9 18       		.uleb128 0x18
+ 1525 00ea 00       		.byte	0
+ 1526 00eb 00       		.byte	0
+ 1527 00ec 0F       		.uleb128 0xf
+ 1528 00ed 0B       		.uleb128 0xb
+ 1529 00ee 01       		.byte	0x1
+ 1530 00ef 11       		.uleb128 0x11
+ 1531 00f0 01       		.uleb128 0x1
+ 1532 00f1 12       		.uleb128 0x12
+ 1533 00f2 06       		.uleb128 0x6
+ 1534 00f3 01       		.uleb128 0x1
+ 1535 00f4 13       		.uleb128 0x13
+ 1536 00f5 00       		.byte	0
+ 1537 00f6 00       		.byte	0
+ 1538 00f7 10       		.uleb128 0x10
+ 1539 00f8 34       		.uleb128 0x34
+ 1540 00f9 00       		.byte	0
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 32
+
+
+ 1541 00fa 03       		.uleb128 0x3
+ 1542 00fb 08       		.uleb128 0x8
+ 1543 00fc 3A       		.uleb128 0x3a
+ 1544 00fd 0B       		.uleb128 0xb
+ 1545 00fe 3B       		.uleb128 0x3b
+ 1546 00ff 0B       		.uleb128 0xb
+ 1547 0100 49       		.uleb128 0x49
+ 1548 0101 13       		.uleb128 0x13
+ 1549 0102 02       		.uleb128 0x2
+ 1550 0103 17       		.uleb128 0x17
+ 1551 0104 00       		.byte	0
+ 1552 0105 00       		.byte	0
+ 1553 0106 11       		.uleb128 0x11
+ 1554 0107 01       		.uleb128 0x1
+ 1555 0108 01       		.byte	0x1
+ 1556 0109 49       		.uleb128 0x49
+ 1557 010a 13       		.uleb128 0x13
+ 1558 010b 01       		.uleb128 0x1
+ 1559 010c 13       		.uleb128 0x13
+ 1560 010d 00       		.byte	0
+ 1561 010e 00       		.byte	0
+ 1562 010f 12       		.uleb128 0x12
+ 1563 0110 21       		.uleb128 0x21
+ 1564 0111 00       		.byte	0
+ 1565 0112 49       		.uleb128 0x49
+ 1566 0113 13       		.uleb128 0x13
+ 1567 0114 2F       		.uleb128 0x2f
+ 1568 0115 0B       		.uleb128 0xb
+ 1569 0116 00       		.byte	0
+ 1570 0117 00       		.byte	0
+ 1571 0118 13       		.uleb128 0x13
+ 1572 0119 34       		.uleb128 0x34
+ 1573 011a 00       		.byte	0
+ 1574 011b 03       		.uleb128 0x3
+ 1575 011c 0E       		.uleb128 0xe
+ 1576 011d 3A       		.uleb128 0x3a
+ 1577 011e 0B       		.uleb128 0xb
+ 1578 011f 3B       		.uleb128 0x3b
+ 1579 0120 05       		.uleb128 0x5
+ 1580 0121 49       		.uleb128 0x49
+ 1581 0122 13       		.uleb128 0x13
+ 1582 0123 3F       		.uleb128 0x3f
+ 1583 0124 19       		.uleb128 0x19
+ 1584 0125 3C       		.uleb128 0x3c
+ 1585 0126 19       		.uleb128 0x19
+ 1586 0127 00       		.byte	0
+ 1587 0128 00       		.byte	0
+ 1588 0129 14       		.uleb128 0x14
+ 1589 012a 35       		.uleb128 0x35
+ 1590 012b 00       		.byte	0
+ 1591 012c 49       		.uleb128 0x49
+ 1592 012d 13       		.uleb128 0x13
+ 1593 012e 00       		.byte	0
+ 1594 012f 00       		.byte	0
+ 1595 0130 15       		.uleb128 0x15
+ 1596 0131 34       		.uleb128 0x34
+ 1597 0132 00       		.byte	0
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 33
+
+
+ 1598 0133 03       		.uleb128 0x3
+ 1599 0134 0E       		.uleb128 0xe
+ 1600 0135 3A       		.uleb128 0x3a
+ 1601 0136 0B       		.uleb128 0xb
+ 1602 0137 3B       		.uleb128 0x3b
+ 1603 0138 0B       		.uleb128 0xb
+ 1604 0139 49       		.uleb128 0x49
+ 1605 013a 13       		.uleb128 0x13
+ 1606 013b 3F       		.uleb128 0x3f
+ 1607 013c 19       		.uleb128 0x19
+ 1608 013d 02       		.uleb128 0x2
+ 1609 013e 18       		.uleb128 0x18
+ 1610 013f 00       		.byte	0
+ 1611 0140 00       		.byte	0
+ 1612 0141 16       		.uleb128 0x16
+ 1613 0142 34       		.uleb128 0x34
+ 1614 0143 00       		.byte	0
+ 1615 0144 03       		.uleb128 0x3
+ 1616 0145 08       		.uleb128 0x8
+ 1617 0146 3A       		.uleb128 0x3a
+ 1618 0147 0B       		.uleb128 0xb
+ 1619 0148 3B       		.uleb128 0x3b
+ 1620 0149 0B       		.uleb128 0xb
+ 1621 014a 49       		.uleb128 0x49
+ 1622 014b 13       		.uleb128 0x13
+ 1623 014c 3F       		.uleb128 0x3f
+ 1624 014d 19       		.uleb128 0x19
+ 1625 014e 02       		.uleb128 0x2
+ 1626 014f 18       		.uleb128 0x18
+ 1627 0150 00       		.byte	0
+ 1628 0151 00       		.byte	0
+ 1629 0152 17       		.uleb128 0x17
+ 1630 0153 2E       		.uleb128 0x2e
+ 1631 0154 00       		.byte	0
+ 1632 0155 3F       		.uleb128 0x3f
+ 1633 0156 19       		.uleb128 0x19
+ 1634 0157 3C       		.uleb128 0x3c
+ 1635 0158 19       		.uleb128 0x19
+ 1636 0159 6E       		.uleb128 0x6e
+ 1637 015a 0E       		.uleb128 0xe
+ 1638 015b 03       		.uleb128 0x3
+ 1639 015c 0E       		.uleb128 0xe
+ 1640 015d 3A       		.uleb128 0x3a
+ 1641 015e 0B       		.uleb128 0xb
+ 1642 015f 3B       		.uleb128 0x3b
+ 1643 0160 0B       		.uleb128 0xb
+ 1644 0161 00       		.byte	0
+ 1645 0162 00       		.byte	0
+ 1646 0163 00       		.byte	0
+ 1647              		.section	.debug_loc,"",%progbits
+ 1648              	.Ldebug_loc0:
+ 1649              	.LLST0:
+ 1650 0000 88000000 		.4byte	.LVL38
+ 1651 0004 A8000000 		.4byte	.LVL41
+ 1652 0008 0A00     		.2byte	0xa
+ 1653 000a 9E       		.byte	0x9e
+ 1654 000b 08       		.uleb128 0x8
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 34
+
+
+ 1655 000c 00000000 		.4byte	0
+ 1656 0010 00000000 		.4byte	0
+ 1657 0014 A8000000 		.4byte	.LVL41
+ 1658 0018 D0000000 		.4byte	.LFE67
+ 1659 001c 0A00     		.2byte	0xa
+ 1660 001e 9E       		.byte	0x9e
+ 1661 001f 08       		.uleb128 0x8
+ 1662 0020 00000000 		.4byte	0
+ 1663 0024 00C06F40 		.4byte	0x406fc000
+ 1664 0028 00000000 		.4byte	0
+ 1665 002c 00000000 		.4byte	0
+ 1666              		.section	.debug_aranges,"",%progbits
+ 1667 0000 34000000 		.4byte	0x34
+ 1668 0004 0200     		.2byte	0x2
+ 1669 0006 00000000 		.4byte	.Ldebug_info0
+ 1670 000a 04       		.byte	0x4
+ 1671 000b 00       		.byte	0
+ 1672 000c 0000     		.2byte	0
+ 1673 000e 0000     		.2byte	0
+ 1674 0010 00000000 		.4byte	.LFB65
+ 1675 0014 D8000000 		.4byte	.LFE65-.LFB65
+ 1676 0018 00000000 		.4byte	.LFB66
+ 1677 001c 14000000 		.4byte	.LFE66-.LFB66
+ 1678 0020 00000000 		.4byte	.LFB64
+ 1679 0024 02000000 		.4byte	.LFE64-.LFB64
+ 1680 0028 00000000 		.4byte	.LFB67
+ 1681 002c D0000000 		.4byte	.LFE67-.LFB67
+ 1682 0030 00000000 		.4byte	0
+ 1683 0034 00000000 		.4byte	0
+ 1684              		.section	.debug_ranges,"",%progbits
+ 1685              	.Ldebug_ranges0:
+ 1686 0000 00000000 		.4byte	.LFB65
+ 1687 0004 D8000000 		.4byte	.LFE65
+ 1688 0008 00000000 		.4byte	.LFB66
+ 1689 000c 14000000 		.4byte	.LFE66
+ 1690 0010 00000000 		.4byte	.LFB64
+ 1691 0014 02000000 		.4byte	.LFE64
+ 1692 0018 00000000 		.4byte	.LFB67
+ 1693 001c D0000000 		.4byte	.LFE67
+ 1694 0020 00000000 		.4byte	0
+ 1695 0024 00000000 		.4byte	0
+ 1696              		.section	.debug_line,"",%progbits
+ 1697              	.Ldebug_line0:
+ 1698 0000 FC020000 		.section	.debug_str,"MS",%progbits,1
+ 1698      02008402 
+ 1698      00000201 
+ 1698      FB0E0D00 
+ 1698      01010101 
+ 1699              	.LASF62:
+ 1700 0000 54696D65 		.ascii	"Timer_Motor_Start\000"
+ 1700      725F4D6F 
+ 1700      746F725F 
+ 1700      53746172 
+ 1700      7400
+ 1701              	.LASF26:
+ 1702 0012 666C616D 		.ascii	"flame_found\000"
+ 1702      655F666F 
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 35
+
+
+ 1702      756E6400 
+ 1703              	.LASF66:
+ 1704 001e 7475726E 		.ascii	"turn_Start\000"
+ 1704      5F537461 
+ 1704      727400
+ 1705              	.LASF28:
+ 1706 0029 6E65775F 		.ascii	"new_time\000"
+ 1706      74696D65 
+ 1706      00
+ 1707              	.LASF31:
+ 1708 0032 74617267 		.ascii	"target\000"
+ 1708      657400
+ 1709              	.LASF2:
+ 1710 0039 73686F72 		.ascii	"short int\000"
+ 1710      7420696E 
+ 1710      7400
+ 1711              	.LASF64:
+ 1712 0043 4D6F746F 		.ascii	"Motor_Stop_SetVector\000"
+ 1712      725F5374 
+ 1712      6F705F53 
+ 1712      65745665 
+ 1712      63746F72 
+ 1713              	.LASF59:
+ 1714 0058 50574D5F 		.ascii	"PWM_FanServos_Start\000"
+ 1714      46616E53 
+ 1714      6572766F 
+ 1714      735F5374 
+ 1714      61727400 
+ 1715              	.LASF44:
+ 1716 006c 50574D5F 		.ascii	"PWM_Motor_WriteCompare\000"
+ 1716      4D6F746F 
+ 1716      725F5772 
+ 1716      69746543 
+ 1716      6F6D7061 
+ 1717              	.LASF73:
+ 1718 0083 6D61696E 		.ascii	"main\000"
+ 1718      00
+ 1719              	.LASF24:
+ 1720 0088 73657276 		.ascii	"servo_set\000"
+ 1720      6F5F7365 
+ 1720      7400
+ 1721              	.LASF60:
+ 1722 0092 50574D5F 		.ascii	"PWM_IRServo_Start\000"
+ 1722      49525365 
+ 1722      72766F5F 
+ 1722      53746172 
+ 1722      7400
+ 1723              	.LASF34:
+ 1724 00a4 64657269 		.ascii	"derivative\000"
+ 1724      76617469 
+ 1724      766500
+ 1725              	.LASF41:
+ 1726 00af 55415254 		.ascii	"UART_PutString\000"
+ 1726      5F507574 
+ 1726      53747269 
+ 1726      6E6700
+ 1727              	.LASF14:
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 36
+
+
+ 1728 00be 75696E74 		.ascii	"uint16\000"
+ 1728      313600
+ 1729              	.LASF35:
+ 1730 00c5 6469616D 		.ascii	"diameter\000"
+ 1730      65746572 
+ 1730      00
+ 1731              	.LASF50:
+ 1732 00ce 55415254 		.ascii	"UART_Start\000"
+ 1732      5F537461 
+ 1732      727400
+ 1733              	.LASF13:
+ 1734 00d9 75696E74 		.ascii	"uint8\000"
+ 1734      3800
+ 1735              	.LASF29:
+ 1736 00df 6F6C6473 		.ascii	"oldspeed\000"
+ 1736      70656564 
+ 1736      00
+ 1737              	.LASF61:
+ 1738 00e8 5265665F 		.ascii	"Ref_Start\000"
+ 1738      53746172 
+ 1738      7400
+ 1739              	.LASF15:
+ 1740 00f2 666C6F61 		.ascii	"float\000"
+ 1740      7400
+ 1741              	.LASF8:
+ 1742 00f8 6C6F6E67 		.ascii	"long long int\000"
+ 1742      206C6F6E 
+ 1742      6720696E 
+ 1742      7400
+ 1743              	.LASF6:
+ 1744 0106 6C6F6E67 		.ascii	"long int\000"
+ 1744      20696E74 
+ 1744      00
+ 1745              	.LASF63:
+ 1746 010f 4D6F746F 		.ascii	"Motor_Stop_Start\000"
+ 1746      725F5374 
+ 1746      6F705F53 
+ 1746      74617274 
+ 1746      00
+ 1747              	.LASF4:
+ 1748 0120 5F5F7569 		.ascii	"__uint8_t\000"
+ 1748      6E74385F 
+ 1748      7400
+ 1749              	.LASF58:
+ 1750 012a 50574D5F 		.ascii	"PWM_Fan_Start\000"
+ 1750      46616E5F 
+ 1750      53746172 
+ 1750      7400
+ 1751              	.LASF55:
+ 1752 0138 54696D65 		.ascii	"Timer_Edge_Start\000"
+ 1752      725F4564 
+ 1752      67655F53 
+ 1752      74617274 
+ 1752      00
+ 1753              	.LASF48:
+ 1754 0149 50574D5F 		.ascii	"PWM_Fan_WriteCompare1\000"
+ 1754      46616E5F 
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 37
+
+
+ 1754      57726974 
+ 1754      65436F6D 
+ 1754      70617265 
+ 1755              	.LASF57:
+ 1756 015f 436F6D70 		.ascii	"Comp_Black_Start\000"
+ 1756      5F426C61 
+ 1756      636B5F53 
+ 1756      74617274 
+ 1756      00
+ 1757              	.LASF51:
+ 1758 0170 4C43445F 		.ascii	"LCD_Start\000"
+ 1758      53746172 
+ 1758      7400
+ 1759              	.LASF71:
+ 1760 017a 433A5C55 		.ascii	"C:\\Users\\sk3220\\OneDrive - Princeton University\\"
+ 1760      73657273 
+ 1760      5C736B33 
+ 1760      3232305C 
+ 1760      4F6E6544 
+ 1761 01aa 446F6375 		.ascii	"Documents\\PSoC Creator\\Workspace404\\Design01.cyd"
+ 1761      6D656E74 
+ 1761      735C5053 
+ 1761      6F432043 
+ 1761      72656174 
+ 1762 01da 736E00   		.ascii	"sn\000"
+ 1763              	.LASF18:
+ 1764 01dd 6C6F6E67 		.ascii	"long double\000"
+ 1764      20646F75 
+ 1764      626C6500 
+ 1765              	.LASF1:
+ 1766 01e9 756E7369 		.ascii	"unsigned char\000"
+ 1766      676E6564 
+ 1766      20636861 
+ 1766      7200
+ 1767              	.LASF40:
+ 1768 01f7 73707269 		.ascii	"sprintf\000"
+ 1768      6E746600 
+ 1769              	.LASF0:
+ 1770 01ff 7369676E 		.ascii	"signed char\000"
+ 1770      65642063 
+ 1770      68617200 
+ 1771              	.LASF9:
+ 1772 020b 6C6F6E67 		.ascii	"long long unsigned int\000"
+ 1772      206C6F6E 
+ 1772      6720756E 
+ 1772      7369676E 
+ 1772      65642069 
+ 1773              	.LASF49:
+ 1774 0222 50574D5F 		.ascii	"PWM_Fan_WriteCompare2\000"
+ 1774      46616E5F 
+ 1774      57726974 
+ 1774      65436F6D 
+ 1774      70617265 
+ 1775              	.LASF68:
+ 1776 0238 50574D5F 		.ascii	"PWM_IRServo_WriteCompare\000"
+ 1776      49525365 
+ 1776      72766F5F 
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 38
+
+
+ 1776      57726974 
+ 1776      65436F6D 
+ 1777              	.LASF10:
+ 1778 0251 756E7369 		.ascii	"unsigned int\000"
+ 1778      676E6564 
+ 1778      20696E74 
+ 1778      00
+ 1779              	.LASF53:
+ 1780 025e 4C43445F 		.ascii	"LCD_PrintString\000"
+ 1780      5072696E 
+ 1780      74537472 
+ 1780      696E6700 
+ 1781              	.LASF46:
+ 1782 026e 50574D5F 		.ascii	"PWM_FanServos_WriteCompare1\000"
+ 1782      46616E53 
+ 1782      6572766F 
+ 1782      735F5772 
+ 1782      69746543 
+ 1783              	.LASF47:
+ 1784 028a 50574D5F 		.ascii	"PWM_FanServos_WriteCompare2\000"
+ 1784      46616E53 
+ 1784      6572766F 
+ 1784      735F5772 
+ 1784      69746543 
+ 1785              	.LASF20:
+ 1786 02a6 7475726E 		.ascii	"turn\000"
+ 1786      00
+ 1787              	.LASF30:
+ 1788 02ab 73706565 		.ascii	"speed\000"
+ 1788      6400
+ 1789              	.LASF45:
+ 1790 02b1 55415254 		.ascii	"UART_Mega_PutChar\000"
+ 1790      5F4D6567 
+ 1790      615F5075 
+ 1790      74436861 
+ 1790      7200
+ 1791              	.LASF3:
+ 1792 02c3 73686F72 		.ascii	"short unsigned int\000"
+ 1792      7420756E 
+ 1792      7369676E 
+ 1792      65642069 
+ 1792      6E7400
+ 1793              	.LASF67:
+ 1794 02d6 7475726E 		.ascii	"turn_SetVector\000"
+ 1794      5F536574 
+ 1794      56656374 
+ 1794      6F7200
+ 1795              	.LASF21:
+ 1796 02e5 73746F70 		.ascii	"stop\000"
+ 1796      00
+ 1797              	.LASF17:
+ 1798 02ea 63686172 		.ascii	"char\000"
+ 1798      00
+ 1799              	.LASF43:
+ 1800 02ef 54696D65 		.ascii	"Timer_Edge_ReadStatusRegister\000"
+ 1800      725F4564 
+ 1800      67655F52 
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 39
+
+
+ 1800      65616453 
+ 1800      74617475 
+ 1801              	.LASF33:
+ 1802 030d 696E7465 		.ascii	"integration\000"
+ 1802      67726174 
+ 1802      696F6E00 
+ 1803              	.LASF12:
+ 1804 0319 696E7433 		.ascii	"int32_t\000"
+ 1804      325F7400 
+ 1805              	.LASF25:
+ 1806 0321 5F426F6F 		.ascii	"_Bool\000"
+ 1806      6C00
+ 1807              	.LASF39:
+ 1808 0327 54696D65 		.ascii	"Timer_Edge_ReadCapture\000"
+ 1808      725F4564 
+ 1808      67655F52 
+ 1808      65616443 
+ 1808      61707475 
+ 1809              	.LASF70:
+ 1810 033e 6D61696E 		.ascii	"main.c\000"
+ 1810      2E6300
+ 1811              	.LASF7:
+ 1812 0345 6C6F6E67 		.ascii	"long unsigned int\000"
+ 1812      20756E73 
+ 1812      69676E65 
+ 1812      6420696E 
+ 1812      7400
+ 1813              	.LASF16:
+ 1814 0357 646F7562 		.ascii	"double\000"
+ 1814      6C6500
+ 1815              	.LASF54:
+ 1816 035e 50574D5F 		.ascii	"PWM_Motor_Start\000"
+ 1816      4D6F746F 
+ 1816      725F5374 
+ 1816      61727400 
+ 1817              	.LASF5:
+ 1818 036e 5F5F696E 		.ascii	"__int32_t\000"
+ 1818      7433325F 
+ 1818      7400
+ 1819              	.LASF65:
+ 1820 0378 55415254 		.ascii	"UART_Mega_Start\000"
+ 1820      5F4D6567 
+ 1820      615F5374 
+ 1820      61727400 
+ 1821              	.LASF11:
+ 1822 0388 75696E74 		.ascii	"uint8_t\000"
+ 1822      385F7400 
+ 1823              	.LASF36:
+ 1824 0390 70657263 		.ascii	"percent\000"
+ 1824      656E7400 
+ 1825              	.LASF19:
+ 1826 0398 73697A65 		.ascii	"sizetype\000"
+ 1826      74797065 
+ 1826      00
+ 1827              	.LASF52:
+ 1828 03a1 4C43445F 		.ascii	"LCD_Position\000"
+ 1828      506F7369 
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 40
+
+
+ 1828      74696F6E 
+ 1828      00
+ 1829              	.LASF22:
+ 1830 03ae 73747262 		.ascii	"strbuf2\000"
+ 1830      75663200 
+ 1831              	.LASF38:
+ 1832 03b6 6E65775F 		.ascii	"new_timet\000"
+ 1832      74696D65 
+ 1832      7400
+ 1833              	.LASF32:
+ 1834 03c0 6572726F 		.ascii	"error\000"
+ 1834      7200
+ 1835              	.LASF37:
+ 1836 03c6 50574D5F 		.ascii	"PWM_Steer\000"
+ 1836      53746565 
+ 1836      7200
+ 1837              	.LASF56:
+ 1838 03d0 50574D5F 		.ascii	"PWM_Servo_Start\000"
+ 1838      53657276 
+ 1838      6F5F5374 
+ 1838      61727400 
+ 1839              	.LASF23:
+ 1840 03e0 49544D5F 		.ascii	"ITM_RxBuffer\000"
+ 1840      52784275 
+ 1840      66666572 
+ 1840      00
+ 1841              	.LASF69:
+ 1842 03ed 474E5520 		.ascii	"GNU C11 5.4.1 20160609 (release) [ARM/embedded-5-br"
+ 1842      43313120 
+ 1842      352E342E 
+ 1842      31203230 
+ 1842      31363036 
+ 1843 0420 616E6368 		.ascii	"anch revision 237715] -mcpu=cortex-m3 -mthumb -g -O"
+ 1843      20726576 
+ 1843      6973696F 
+ 1843      6E203233 
+ 1843      37373135 
+ 1844 0453 67202D66 		.ascii	"g -ffunction-sections -ffat-lto-objects\000"
+ 1844      66756E63 
+ 1844      74696F6E 
+ 1844      2D736563 
+ 1844      74696F6E 
+ 1845              	.LASF27:
+ 1846 047b 6F6C645F 		.ascii	"old_time\000"
+ 1846      74696D65 
+ 1846      00
+ 1847              	.LASF72:
+ 1848 0484 74656D70 		.ascii	"tempCheck\000"
+ 1848      43686563 
+ 1848      6B00
+ 1849              	.LASF42:
+ 1850 048e 50574D5F 		.ascii	"PWM_Servo_WriteCompare\000"
+ 1850      53657276 
+ 1850      6F5F5772 
+ 1850      69746543 
+ 1850      6F6D7061 
+ 1851              		.ident	"GCC: (GNU Tools for ARM Embedded Processors) 5.4.1 20160609 (release) [ARM/embedded-5-bran
+ARM GAS  C:\Users\sk3220\AppData\Local\Temp\ccbFCMqd.s 			page 41
+
+
